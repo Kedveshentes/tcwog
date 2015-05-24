@@ -12,57 +12,150 @@
 		<script src="node_modules/three/three.min.js"></script>
 		<script src="fps.js"></script>
 		<script>
-		var scene  = new THREE.Scene(),
-			camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100),
-			renderer = new THREE.WebGLRenderer();
 
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		document.body.appendChild(renderer.domElement);
+		var Game = function () {
+			this.utils = {
+				timestamp : function timestamp () {
+					return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
+				}
+			};
 
-		var geometry = new THREE.BoxGeometry(1, 1, 1),
-			material = new THREE.MeshBasicMaterial({ color : 0x00ff00 }),
-			cube     = new THREE.Mesh(geometry, material);
+			var that        = this,
+				dt          = 0,
+				step        = 1/60,
+				last        = this.utils.timestamp(),
+				fpsmeter    = new FPSMeter(document.getElementById('fpsmeter'), { decimals: 0, graph: true, theme: 'dark', left: '5px' }),
+				objects     = {
+					cubes : []
+				},
+				pressedKeys = [],
+				scene       = new THREE.Scene(),
+				camera      = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000),
+				renderer    = new THREE.WebGLRenderer();
 
-		scene.add(cube);
+			var spotLight = new THREE.SpotLight(0xffffff);
+			spotLight.position.set(0, 15, 5);
+			spotLight.castShadow       = true;
+			spotLight.shadowMapWidth   = 1024;
+			spotLight.shadowMapHeight  = 1024;
+			spotLight.shadowCameraNear = 500;
+			spotLight.shadowCameraFar  = 4000;
+			spotLight.shadowCameraFov  = 30;
+			scene.add(spotLight);
 
-		camera.position.z = 5;
+			/*var gameBoxGeometry = new THREE.CubeGeometry(50, 50, 50),
+				gameBoxMaterial = new THREE.MeshBasicMaterial({ color : 0x9999ff , side : THREE.BackSide }),
+				gameBox         = new THREE.Mesh(gameBoxGeometry, gameBoxMaterial);
+			scene.add(gameBox);*/
+
+			var ambientLight    = new THREE.AmbientLight(0x666666);
+			scene.add(ambientLight);
 
 
-		function timestamp () {
-			return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
-		}
+			this.handleKeyUp = function (event) {
+				pressedKeys[event.keyCode] = false;
+			};
 
-		function update () {
-			cube.rotation.x += 0.04;
-			cube.rotation.y += 0.04;
-		}
+			this.handleKeyDown = function (event) {
+				pressedKeys[event.keyCode] = true;
+			};
 
-		var	dt 	 = 0,
-			step = 1/60,
-			last     = timestamp(),
-			fpsmeter = new FPSMeter(document.getElementById('fpsmeter'), { decimals: 0, graph: true, theme: 'dark', left: '5px' });
+			this.handleKeys = function () {
+				if (pressedKeys[33]) {
+					// Page Up
+					z -= 0.05;
+				}
+				if (pressedKeys[34]) {
+					// Page Down
+					z += 0.05;
+				}
+				if (pressedKeys[37]) {
+					// Left cursor key
+					camera.position.x += -0.4;
+				}
+				if (pressedKeys[39]) {
+					// Right cursor key
+					camera.position.x -= -0.4;
+				}
+				if (pressedKeys[38]) {
+					// Up cursor key
+					camera.position.z += -0.4;
+				}
+				if (pressedKeys[40]) {
+					// Down cursor key
+					camera.position.z -= -0.4;
+				}
+			};
 
-		function frame () {
-			fpsmeter.tickStart();
-			now  = timestamp();
-			dt   = dt + Math.min(1, (now - last) / 1000);
-			while (dt > step) {
-				dt = dt - step;
-				update(step);
-				fpsmeter.tick();
-			}
-			render(dt);
-			last = now;
-			requestAnimationFrame(frame);
-		}
+			this.update = function () {
 
-		function render () {
-			/*update();
-			requestAnimationFrame(render);*/
-			renderer.render(scene, camera);
-		}
-		frame();
+				that.handleKeys();
 
+				for (var i = objects.cubes.length - 1; i >= 0; i--) {
+					objects.cubes[i].rotation.x += 0.04;
+					objects.cubes[i].rotation.y += 0.04;
+				}
+			};
+
+			this.render = function () {
+				renderer.render(scene, camera);
+			};
+
+			this.frame = function () {
+				fpsmeter.tickStart();
+				now  = that.utils.timestamp();
+				dt   = dt + Math.min(1, (now - last) / 1000);
+				while (dt > step) {
+					dt = dt - step;
+					that.update(step);
+					fpsmeter.tick();
+				}
+				that.render(dt);
+				last = now;
+				requestAnimationFrame(that.frame);
+			};
+
+			this.init = function () {
+				renderer.setSize(window.innerWidth, window.innerHeight);
+
+				document.body.appendChild(renderer.domElement);
+				document.onkeyup   = this.handleKeyUp;
+				document.onkeydown = this.handleKeyDown;
+
+				camera.position.z = 15;
+
+				var geometry        = new THREE.BoxGeometry(1, 1, 1),
+					material        = new THREE.MeshPhongMaterial({ color : 0x00ff00 });
+				/*var outlineGeometry = new THREE.BoxGeometry(1.1, 1.1, 1.1),
+					outlineMaterial = new THREE.MeshBasicMaterial({ color : 0x00ffff, side : THREE.BackSide });*/
+
+
+				var currentCube;
+				/*var currentOutline;*/
+				for (var i = 9; i >= 0; i--) {
+					currentCube = new THREE.Mesh(geometry, material);
+					currentCube.position.set(Math.floor((Math.random() * 11) - 5), Math.floor((Math.random() * 11) - 5), Math.floor((Math.random() * 11) - 5));
+					objects.cubes.push(currentCube);
+					
+					/*currentOutline = new THREE.Mesh(outlineGeometry, outlineMaterial);
+					currentOutline.position.set(currentCube.position.x, currentCube.position.y, currentCube.position.z);
+					currentCube.scale.multiplyScalar(1.05);
+					objects.cubes.push(currentOutline);*/
+
+
+				}
+
+				for (var i = objects.cubes.length - 1; i >= 0; i--) {
+					scene.add(objects.cubes[i]);
+				}
+				
+				
+				this.frame();
+			};
+		};
+
+		var game = new Game();
+		game.init();
 
 		</script>
 	</body>
