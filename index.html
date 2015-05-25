@@ -7,7 +7,7 @@
 		</style>
 	</head>
 	<body>
-		<div id="fpsmeter"></div>
+		<!-- <div id="fpsmeter"></div> -->
 
 		<script src="node_modules/three/three.min.js"></script>
 		<script src="fps.js"></script>
@@ -33,22 +33,44 @@
 				camera      = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000),
 				renderer    = new THREE.WebGLRenderer();
 
-			var spotLight = new THREE.SpotLight(0xffffff);
-			spotLight.position.set(0, 15, 5);
-			spotLight.castShadow       = true;
-			spotLight.shadowMapWidth   = 1024;
-			spotLight.shadowMapHeight  = 1024;
-			spotLight.shadowCameraNear = 500;
-			spotLight.shadowCameraFar  = 4000;
-			spotLight.shadowCameraFov  = 30;
-			scene.add(spotLight);
+			renderer.shadowMapEnabled = true;
+			renderer.shadowMapType = THREE.PCFSoftShadowMap;
 
-			/*var gameBoxGeometry = new THREE.CubeGeometry(50, 50, 50),
-				gameBoxMaterial = new THREE.MeshBasicMaterial({ color : 0x9999ff , side : THREE.BackSide }),
+
+			var vatBoxGeometry = new THREE.BoxGeometry(20, 2, 20),
+				vatBoxMaterial = new THREE.MeshLambertMaterial({ color : 0xdddddd, side : THREE.DoubleSide }),
+				vatBox         = new THREE.Mesh(vatBoxGeometry, vatBoxMaterial);
+
+			vatBox.position.set(0, -20, 0);
+			vatBox.receiveShadow = true;
+
+			scene.add(vatBox);
+
+
+			var spotlight = new THREE.SpotLight(0xffffff);
+			spotlight.position.set(0 ,20, 0);
+			spotlight.shadowMapWidth      = 1024;
+			spotlight.shadowMapHeight     = 1024;
+			spotlight.shadowCameraNear    = 10;
+			spotlight.shadowCameraFov     = 50;
+			spotlight.shadowCameraVisible = true;
+			spotlight.target              = vatBox;
+			spotlight.shadowDarkness      = 0.95;
+			spotlight.intensity           = 1.5;
+			spotlight.castShadow          = true;
+			scene.add(spotlight);
+
+
+
+			var gameBoxGeometry = new THREE.BoxGeometry(50, 50, 50),
+				gameBoxMaterial = new THREE.MeshLambertMaterial({ color : 0x669999 , side : THREE.BackSide }),
 				gameBox         = new THREE.Mesh(gameBoxGeometry, gameBoxMaterial);
-			scene.add(gameBox);*/
 
-			var ambientLight    = new THREE.AmbientLight(0x666666);
+			gameBox.receiveShadow = true;
+			scene.add(gameBox);
+
+
+			var ambientLight    = new THREE.AmbientLight(0x222222);
 			scene.add(ambientLight);
 
 
@@ -71,19 +93,19 @@
 				}
 				if (pressedKeys[37]) {
 					// Left cursor key
-					camera.position.x += -0.4;
+					spotlight.position.x += -0.4;
 				}
 				if (pressedKeys[39]) {
 					// Right cursor key
-					camera.position.x -= -0.4;
+					spotlight.position.x -= -0.4;
 				}
 				if (pressedKeys[38]) {
 					// Up cursor key
-					camera.position.z += -0.4;
+					spotlight.position.z += -0.4;
 				}
 				if (pressedKeys[40]) {
 					// Down cursor key
-					camera.position.z -= -0.4;
+					spotlight.position.z -= -0.4;
 				}
 			};
 
@@ -92,8 +114,8 @@
 				that.handleKeys();
 
 				for (var i = objects.cubes.length - 1; i >= 0; i--) {
-					objects.cubes[i].rotation.x += 0.04;
-					objects.cubes[i].rotation.y += 0.04;
+					objects.cubes[i].position.x += objects.cubes[i].direction.x * objects.cubes[i].velocity;
+					objects.cubes[i].position.y += objects.cubes[i].direction.x * objects.cubes[i].velocity;
 				}
 			};
 
@@ -123,6 +145,7 @@
 				document.onkeydown = this.handleKeyDown;
 
 				camera.position.z = 15;
+				camera.position.y = 0;
 
 				var geometry        = new THREE.BoxGeometry(1, 1, 1),
 					material        = new THREE.MeshPhongMaterial({ color : 0x00ff00 });
@@ -135,8 +158,11 @@
 				for (var i = 9; i >= 0; i--) {
 					currentCube = new THREE.Mesh(geometry, material);
 					currentCube.position.set(Math.floor((Math.random() * 11) - 5), Math.floor((Math.random() * 11) - 5), Math.floor((Math.random() * 11) - 5));
+					currentCube.castShadow = true;
+					currentCube.receiveShadow = true;
 					objects.cubes.push(currentCube);
-					
+					currentCube.velocity = 0.1;
+					currentCube.direction = new THREE.Vector3(1, 1, 1);
 					/*currentOutline = new THREE.Mesh(outlineGeometry, outlineMaterial);
 					currentOutline.position.set(currentCube.position.x, currentCube.position.y, currentCube.position.z);
 					currentCube.scale.multiplyScalar(1.05);
