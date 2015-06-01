@@ -10,7 +10,9 @@
 		<!-- <div id="fpsmeter"></div> -->
 
 		<script src="node_modules/three/three.min.js"></script>
+		<script src="node_modules/cannon/build/cannon.min.js"></script>
 		<script src="fps.js"></script>
+
 		<script>
 
 		var Game = function () {
@@ -26,35 +28,40 @@
 				last        = this.utils.timestamp(),
 				fpsmeter    = new FPSMeter(document.getElementById('fpsmeter'), { decimals: 0, graph: true, theme: 'dark', left: '5px' }),
 				objects     = {
-					cubes : []
+					cubes   : [],
+					paddles : []
 				},
-				pressedKeys = [],
-				scene       = new THREE.Scene(),
-				camera      = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000),
-				renderer    = new THREE.WebGLRenderer();
+				pressedKeys = [];
 
-			renderer.shadowMapEnabled = true;
+
+
+			var scene,
+				camera,
+				renderer,
+				spotlight;
+
+			scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x000000, 0, 500);
+
+			camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
+			camera.translateX(0);
+			camera.translateY(5);
+			camera.translateZ(20);
+
+			renderer = new THREE.WebGLRenderer();
 			renderer.shadowMapType = THREE.PCFSoftShadowMap;
+            renderer.shadowMapEnabled = true;
+            renderer.shadowMapSoft = true;
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            renderer.setClearColor( scene.fog.color, 1 );
 
-
-			var vatBoxGeometry = new THREE.BoxGeometry(20, 2, 20),
-				vatBoxMaterial = new THREE.MeshLambertMaterial({ color : 0xdddddd, side : THREE.DoubleSide }),
-				vatBox         = new THREE.Mesh(vatBoxGeometry, vatBoxMaterial);
-
-			vatBox.position.set(0, -20, 0);
-			vatBox.receiveShadow = true;
-
-			scene.add(vatBox);
-
-
-			var spotlight = new THREE.SpotLight(0xffffff);
-			spotlight.position.set(0 ,20, 0);
+			spotlight = new THREE.SpotLight(0xffffff);
+			spotlight.position.set(5 ,40, 15);
 			spotlight.shadowMapWidth      = 1024;
 			spotlight.shadowMapHeight     = 1024;
 			spotlight.shadowCameraNear    = 10;
 			spotlight.shadowCameraFov     = 50;
 			spotlight.shadowCameraVisible = true;
-			spotlight.target              = vatBox;
 			spotlight.shadowDarkness      = 0.95;
 			spotlight.intensity           = 1.5;
 			spotlight.castShadow          = true;
@@ -62,26 +69,124 @@
 
 
 
-			var gameBoxGeometry = new THREE.BoxGeometry(50, 50, 50),
-				gameBoxMaterial = new THREE.MeshLambertMaterial({ color : 0x669999 , side : THREE.BackSide }),
-				gameBox         = new THREE.Mesh(gameBoxGeometry, gameBoxMaterial);
+			var gameBoxGeometry,
+				gameBoxMaterial,
+				gameBox;
 
+			gameBoxGeometry = new THREE.BoxGeometry(50, 50, 50);
+			gameBoxMaterial = new THREE.MeshLambertMaterial({ color : 0x669999 , side : THREE.BackSide });
+			gameBox 		= new THREE.Mesh(gameBoxGeometry, gameBoxMaterial);
 			gameBox.receiveShadow = true;
 			scene.add(gameBox);
 
 
-			var ambientLight    = new THREE.AmbientLight(0x222222);
+			var ambientLight;
+			ambientLight = new THREE.AmbientLight(0x222222);
 			scene.add(ambientLight);
+
+
+			var gameFieldGeometry,
+				gameFieldMaterial,
+				gameField;
+
+			gameFieldGeometry = new THREE.PlaneGeometry(300, 300, 50, 50);
+            gameFieldGeometry.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+            gameFieldMaterial = new THREE.MeshLambertMaterial({ color : 0xaaaaaa });
+            gameField         = new THREE.Mesh(gameFieldGeometry, gameFieldMaterial);
+
+            gameField.castShadow    = true;
+            gameField.receiveShadow = true;
+            scene.add(gameField);
+
+
+
+
+			var world = new CANNON.World();
+            world.gravity.set(0, 0, 0);
+            world.quatNormalizeSkip = 0;
+            world.quatNormalizeFast = false;
+			var solver = new CANNON.GSSolver();
+
+            world.defaultContactMaterial.contactEquationStiffness = 1e9;
+            world.defaultContactMaterial.contactEquationRelaxation = 4;
+
+            solver.iterations = 7;
+            solver.tolerance = 0.1;
+            var split = true;
+            if(split)
+                world.solver = new CANNON.SplitSolver(solver);
+            else
+                world.solver = solver;
+
+            world.broadphase = new CANNON.NaiveBroadphase();
+
+            // Create a slippery material (friction coefficient = 0.0)
+            physicsMaterial = new CANNON.Material("slipperyMaterial");
+            var physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial,
+                                                                    physicsMaterial,
+                                                                    0.0, // friction coefficient
+                                                                    0.3  // restitution
+                                                                    );
+            // We must add the contact materials to the world
+            world.addContactMaterial(physicsContactMaterial);
+
+            // Create a plane
+            var groundShape = new CANNON.Plane();
+            var groundBody = new CANNON.Body({ mass: 0 });
+            groundBody.addShape(groundShape);
+            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
+            world.add(groundBody);
+
+
+
+            var boxes       = [];
+            var boxMeshes   = [];
+			var halfExtents = new CANNON.Vec3(0.5, 0.5, 0.5);
+		    var boxShape    = new CANNON.Box(halfExtents);
+		    
+
+            var boxMaterial = new THREE.MeshLambertMaterial({ color : 0xdddddd, transparent : true, opacity : 0.5 });
+		    var boxGeometry = new THREE.BoxGeometry(halfExtents.x*2,halfExtents.y*2,halfExtents.z*2);
+		    for (var i = 0; i < 19; i++) {
+		        var x = (Math.random()-0.5)*20;
+		        var y = 10 + (Math.random()-0.5)*1;
+		        var z = (Math.random()-0.5)*20;
+		        var boxBody = new CANNON.Body({ mass: 3 });
+		        boxBody.velocity.set(2, -10, 0);
+		        boxBody.addShape(boxShape);
+		        boxBody.torque = new CANNON.Vec3((Math.random()-0.5)*20, (Math.random()-0.5)*20, (Math.random()-0.5)*20);
+		        var boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+		        world.add(boxBody);
+		        scene.add(boxMesh);
+		        boxBody.position.set(x,y,z);
+		        boxMesh.position.set(x,y,z);
+		        boxMesh.castShadow = true;
+		        boxMesh.receiveShadow = true;
+		        objects.cubes.push({
+		        	body : boxBody,
+		        	mesh : boxMesh
+		        });
+		    }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 			this.handleKeyUp = function (event) {
 				pressedKeys[event.keyCode] = false;
 			};
-
 			this.handleKeyDown = function (event) {
 				pressedKeys[event.keyCode] = true;
 			};
-
 			this.handleKeys = function () {
 				if (pressedKeys[33]) {
 					// Page Up
@@ -93,30 +198,32 @@
 				}
 				if (pressedKeys[37]) {
 					// Left cursor key
-					spotlight.position.x += -0.4;
+					objects.cubes[0].position.x += -0.4;
 				}
 				if (pressedKeys[39]) {
 					// Right cursor key
-					spotlight.position.x -= -0.4;
+					objects.cubes[0].position.x -= -0.4;
 				}
 				if (pressedKeys[38]) {
 					// Up cursor key
-					spotlight.position.z += -0.4;
+					objects.cubes[0].position.z += -0.4;
 				}
 				if (pressedKeys[40]) {
 					// Down cursor key
-					spotlight.position.z -= -0.4;
+					objects.cubes[0].position.z -= -0.4;
 				}
 			};
 
-			this.update = function () {
+			this.update = function (step) {
+				world.step(step);
 
 				that.handleKeys();
 
-				for (var i = objects.cubes.length - 1; i >= 0; i--) {
-					objects.cubes[i].position.x += objects.cubes[i].direction.x * objects.cubes[i].velocity;
-					objects.cubes[i].position.y += objects.cubes[i].direction.x * objects.cubes[i].velocity;
-				}
+				// Update box positions
+                for(var i = 0; i < objects.cubes.length; i++) {
+                    objects.cubes[i].mesh.position.copy(objects.cubes[i].body.position);
+                    objects.cubes[i].mesh.quaternion.copy(objects.cubes[i].body.quaternion);
+                }
 			};
 
 			this.render = function () {
@@ -144,37 +251,9 @@
 				document.onkeyup   = this.handleKeyUp;
 				document.onkeydown = this.handleKeyDown;
 
-				camera.position.z = 15;
-				camera.position.y = 0;
-
-				var geometry        = new THREE.BoxGeometry(1, 1, 1),
-					material        = new THREE.MeshPhongMaterial({ color : 0x00ff00 });
-				/*var outlineGeometry = new THREE.BoxGeometry(1.1, 1.1, 1.1),
-					outlineMaterial = new THREE.MeshBasicMaterial({ color : 0x00ffff, side : THREE.BackSide });*/
-
-
-				var currentCube;
-				/*var currentOutline;*/
-				for (var i = 9; i >= 0; i--) {
-					currentCube = new THREE.Mesh(geometry, material);
-					currentCube.position.set(Math.floor((Math.random() * 11) - 5), Math.floor((Math.random() * 11) - 5), Math.floor((Math.random() * 11) - 5));
-					currentCube.castShadow = true;
-					currentCube.receiveShadow = true;
-					objects.cubes.push(currentCube);
-					currentCube.velocity = 0.1;
-					currentCube.direction = new THREE.Vector3(1, 1, 1);
-					/*currentOutline = new THREE.Mesh(outlineGeometry, outlineMaterial);
-					currentOutline.position.set(currentCube.position.x, currentCube.position.y, currentCube.position.z);
-					currentCube.scale.multiplyScalar(1.05);
-					objects.cubes.push(currentOutline);*/
-
-
-				}
-
 				for (var i = objects.cubes.length - 1; i >= 0; i--) {
-					scene.add(objects.cubes[i]);
+					scene.add(objects.cubes[i].mesh);
 				}
-				
 				
 				this.frame();
 			};
