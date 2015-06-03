@@ -3,7 +3,7 @@
 		<title>My first Three.js app</title>
 		<style>
 			body { margin: 0; }
-			canvas { width: 100%; height: 100% }
+			canvas { width: 100%; height: 100%; }
 		</style>
 	</head>
 	<body>
@@ -102,7 +102,7 @@
 
 
 			var world = new CANNON.World();
-            world.gravity.set(0, 0, 0);
+            world.gravity.set(0, -20, 0);
             world.quatNormalizeSkip = 0;
             world.quatNormalizeFast = false;
 			var solver = new CANNON.GSSolver();
@@ -113,7 +113,7 @@
             solver.iterations = 7;
             solver.tolerance = 0.1;
             var split = true;
-            if(split)
+            if (split)
                 world.solver = new CANNON.SplitSolver(solver);
             else
                 world.solver = solver;
@@ -122,63 +122,58 @@
 
             // Create a slippery material (friction coefficient = 0.0)
             physicsMaterial = new CANNON.Material("slipperyMaterial");
-            var physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial,
-                                                                    physicsMaterial,
-                                                                    0.0, // friction coefficient
-                                                                    0.3  // restitution
+
+            var groundMaterial = new CANNON.Material();
+            /*var physicsContactMaterial = new CANNON.ContactMaterial(physicsMaterial,
+                                                                    mat,
+                                                                    {
+                                                                    	friction : 0.0,
+                                                                    	restitution : 0.9  // restitution
+                                                                    }
                                                                     );
             // We must add the contact materials to the world
-            world.addContactMaterial(physicsContactMaterial);
+            world.addContactMaterial(physicsContactMaterial);*/
 
             // Create a plane
             var groundShape = new CANNON.Plane();
-            var groundBody = new CANNON.Body({ mass: 0 });
+            var groundBody = new CANNON.Body({ mass : 0 , material : groundMaterial });
             groundBody.addShape(groundShape);
             groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0),-Math.PI/2);
             world.add(groundBody);
 
 
 
-            var boxes       = [];
-            var boxMeshes   = [];
-			var halfExtents = new CANNON.Vec3(0.5, 0.5, 0.5);
-		    var boxShape    = new CANNON.Box(halfExtents);
+			var halfExtents       = new CANNON.Vec3(0.5, 0.5, 0.5);
+		    var boxShape          = new CANNON.Box(halfExtents);
+    		var boxCannonMaterial = new CANNON.Material();
 		    
+			var boxCannonMaterial_ground = new CANNON.ContactMaterial(groundMaterial, boxCannonMaterial, { friction: 1, restitution: 0.9 });
+            world.addContactMaterial(boxCannonMaterial_ground);
 
-            var boxMaterial = new THREE.MeshLambertMaterial({ color : 0xdddddd, transparent : true, opacity : 0.5 });
-		    var boxGeometry = new THREE.BoxGeometry(halfExtents.x*2,halfExtents.y*2,halfExtents.z*2);
+            var boxMaterial = new THREE.MeshLambertMaterial({ color : 0xdddddd });
+		    var boxGeometry = new THREE.BoxGeometry(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2);
 		    for (var i = 0; i < 19; i++) {
-		        var x = (Math.random()-0.5)*20;
-		        var y = 10 + (Math.random()-0.5)*1;
-		        var z = (Math.random()-0.5)*20;
-		        var boxBody = new CANNON.Body({ mass: 3 });
-		        boxBody.velocity.set(2, -10, 0);
+		        var x = 0;
+		        var y = i * 3;
+		        var z = 0;
+
+		        var boxBody = new CANNON.Body({ mass: 3, material : boxCannonMaterial });
+		        /*boxBody.velocity.set(2, -10, 0);*/
 		        boxBody.addShape(boxShape);
-		        boxBody.torque = new CANNON.Vec3((Math.random()-0.5)*20, (Math.random()-0.5)*20, (Math.random()-0.5)*20);
-		        var boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
+/*		        boxBody.torque = new CANNON.Vec3((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20);
+*/		        var boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
 		        world.add(boxBody);
 		        scene.add(boxMesh);
-		        boxBody.position.set(x,y,z);
-		        boxMesh.position.set(x,y,z);
-		        boxMesh.castShadow = true;
+		        boxBody.position.set(x, y, z);
+		        boxMesh.position.set(x, y, z);
+		        boxMesh.castShadow    = true;
 		        boxMesh.receiveShadow = true;
 		        objects.cubes.push({
 		        	body : boxBody,
 		        	mesh : boxMesh
 		        });
 		    }
-
-
-
-
-
-
-
-
-
-
-
-
+			
 
 
 			this.handleKeyUp = function (event) {
