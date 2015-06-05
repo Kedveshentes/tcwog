@@ -18,7 +18,7 @@
 
 		var Game = function () {
 			this.utils = {
-				timestamp : function timestamp () {
+				timestamp : function () {
 					return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
 				},
 				springs   : {
@@ -26,19 +26,53 @@
 					damping   : 30
 				}
 			};
+			this.objects = {
+				cubes   : [],
+				lines   : [],
+				springs : []
+			}
 
 			var that        = this,
 				dt          = 0,
 				step        = 1/60,
 				last        = this.utils.timestamp(),
 				fpsmeter    = new FPSMeter(document.getElementById('fpsmeter'), { decimals: 0, graph: true, theme: 'dark', left: '5px' }),
-				objects     = {
-					cubes   : [],
-					lines   : [],
-					springs : []
-				},
 				pressedKeys = [],
 				mouse       = new THREE.Vector2();
+
+
+			var createBridge = function (index1, index2, restLength) {
+				that.objects.springs.push(
+					new CANNON.Spring(that.objects.cubes[index1].body, that.objects.cubes[index2].body, {
+						localAnchorA : new CANNON.Vec3(0, 0, 0),
+						localAnchorB : new CANNON.Vec3(0, 0, 0),
+						restLength   : restLength || 5,
+						stiffness    : that.utils.springs.stiffness,
+						damping      : that.utils.springs.damping
+					})
+				);
+
+				var material,
+					geometry,
+					line;
+
+				material = new THREE.LineBasicMaterial({
+					color : 0x66ffff
+				});
+				geometry = new THREE.Geometry();
+				geometry.vertices.push(that.objects.cubes[index1].mesh.position);
+				geometry.vertices.push(that.objects.cubes[index2].mesh.position);
+				line = new THREE.Line(geometry, material);
+
+				that.objects.lines.push({
+					material  : material,
+					geometry  : geometry,
+					mesh      : line,
+					box1      : index1,
+					box2      : index2
+				});
+				scene.add(line);
+			};
 
 
 			var scene,
@@ -93,7 +127,7 @@
 
 				camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 				camera.translateX(0);
-				camera.translateY(10);
+				camera.translateY(18);
 				camera.translateZ(25);
 
 				renderer = new THREE.WebGLRenderer();
@@ -111,22 +145,22 @@
 				scene.add(gameBox);*/
 
 
-				gameFieldGeometry = new THREE.PlaneGeometry(30, 10, 50, 50);
+				gameFieldGeometry = new THREE.PlaneBufferGeometry(70, 6, 50, 50);
 				gameFieldGeometry.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
 				gameFieldMaterial = new THREE.MeshLambertMaterial({ color : 0xaaaaaa });
 				gameField         = new THREE.Mesh(gameFieldGeometry, gameFieldMaterial);
 
-				gameField.position.z    = 5;
+				gameField.position.z    = 3;
 				gameField.castShadow    = true;
 				gameField.receiveShadow = true;
 				scene.add(gameField);
 
 
-				gameFieldRearGeometry = new THREE.PlaneGeometry(30, 20, 50, 50);
+				gameFieldRearGeometry = new THREE.PlaneBufferGeometry(70, 40, 50, 50);
 				gameFieldRearMaterial = new THREE.MeshLambertMaterial({ color : 0xccccff });
 				gameFieldRear         = new THREE.Mesh(gameFieldRearGeometry, gameFieldRearMaterial);
 
-				gameFieldRear.position.y    = 10;
+				gameFieldRear.position.y    = 20;
 				gameFieldRear.castShadow    = true;
 				gameFieldRear.receiveShadow = true;
 				scene.add(gameFieldRear);
@@ -138,14 +172,14 @@
 
 
 				spotlight = new THREE.SpotLight(0xffffff);
-				spotlight.position.set(5, 40, 15);
+				spotlight.position.set(-15, 60, 14);
 				spotlight.shadowMapWidth      = 1024;
 				spotlight.shadowMapHeight     = 1024;
 				spotlight.shadowCameraNear    = 10;
-				spotlight.shadowCameraFov     = 50;
-				spotlight.shadowCameraVisible = true;
+				spotlight.shadowCameraFov     = 50;/*
+				spotlight.shadowCameraVisible = true;*/
 				spotlight.shadowDarkness      = 0.95;
-				spotlight.intensity           = 1.5;
+				spotlight.intensity           = 1.6;
 				spotlight.castShadow          = true;
 				scene.add(spotlight);
 
@@ -241,41 +275,16 @@
 					boxMesh.position.set(x, y, z);
 					boxMesh.castShadow    = true;
 					boxMesh.receiveShadow = true;
-					objects.cubes.push({
+					this.objects.cubes.push({
 						body : boxBody,
 						mesh : boxMesh
 					});
 				}
 
-				objects.springs.push(
-					new CANNON.Spring(objects.cubes[0].body, objects.cubes[1].body, {
-						localAnchorA : new CANNON.Vec3(0, 0, 0),
-						localAnchorB : new CANNON.Vec3(0, 0, 0),
-						restLength   : 5,
-						stiffness    : this.utils.springs.stiffness,
-						damping      : this.utils.springs.damping
-					})
-				);
-				objects.springs.push(
-					new CANNON.Spring(objects.cubes[1].body, objects.cubes[2].body, {
-						localAnchorA : new CANNON.Vec3(0, 0, 0),
-						localAnchorB : new CANNON.Vec3(0, 0, 0),
-						restLength   : 5,
-						stiffness    : this.utils.springs.stiffness,
-						damping      : this.utils.springs.damping
-					})
-				);
-				objects.springs.push(
-					new CANNON.Spring(objects.cubes[2].body, objects.cubes[0].body, {
-						localAnchorA : new CANNON.Vec3(0, 0, 0),
-						localAnchorB : new CANNON.Vec3(0, 0, 0),
-						restLength   : 5,
-						stiffness    : this.utils.springs.stiffness,
-						damping      : this.utils.springs.damping
-					})
-				);
+				createBridge(0, 1);
+				createBridge(1, 2);
+				createBridge(2, 0);
 			};
-
 
 			this.handleKeyUp = function (event) {
 				pressedKeys[event.keyCode] = false;
@@ -294,19 +303,19 @@
 				}
 				if (pressedKeys[37]) {
 					// Left cursor key
-					objects.cubes[0].position.x += -0.4;
+					this.objects.cubes[0].position.x += -0.4;
 				}
 				if (pressedKeys[39]) {
 					// Right cursor key
-					objects.cubes[0].position.x -= -0.4;
+					this.objects.cubes[0].position.x -= -0.4;
 				}
 				if (pressedKeys[38]) {
 					// Up cursor key
-					objects.cubes[0].position.z += -0.4;
+					this.objects.cubes[0].position.z += -0.4;
 				}
 				if (pressedKeys[40]) {
 					// Down cursor key
-					objects.cubes[0].position.z -= -0.4;
+					this.objects.cubes[0].position.z -= -0.4;
 				}
 			};
 			this.handleMouseMove = function (event) {
@@ -315,7 +324,7 @@
 				mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 			};
 			this.handleMouseClick = function (event) {
-				if (mouseIndicatorEnabled) {
+				if (mouseIndicatorEnabled && distancesMin1 <= 6 && distancesMin2 <= 6) {
 					var boxMaterial    = new THREE.MeshLambertMaterial({ color : 0xdddddd }),
 						newBoxGeometry = new THREE.BoxGeometry(1, 1, 1),
 						newBoxMesh     = new THREE.Mesh(newBoxGeometry, boxMaterial),
@@ -328,68 +337,13 @@
 					newBoxMesh.position.set(mouseIndicator.position.x, mouseIndicator.position.y, mouseIndicator.position.z);
 					newBoxMesh.castShadow    = true;
 					newBoxMesh.receiveShadow = true;
-					objects.cubes.push({
+					that.objects.cubes.push({
 						body : newBoxBody,
 						mesh : newBoxMesh
 					});
 
-
-					objects.springs.push(
-						new CANNON.Spring(objects.cubes[distancesMinIndex1].body, objects.cubes[objects.cubes.length - 1].body, {
-							localAnchorA : new CANNON.Vec3(0, 0, 0),
-							localAnchorB : new CANNON.Vec3(0, 0, 0),
-							restLength   : distancesMin1,
-							stiffness    : that.utils.springs.stiffness,
-							damping      : that.utils.springs.damping
-						})
-					);
-					objects.springs.push(
-						new CANNON.Spring(objects.cubes[distancesMinIndex2].body, objects.cubes[objects.cubes.length - 1].body, {
-							localAnchorA : new CANNON.Vec3(0, 0, 0),
-							localAnchorB : new CANNON.Vec3(0, 0, 0),
-							restLength   : distancesMin2,
-							stiffness    : that.utils.springs.stiffness,
-							damping      : that.utils.springs.damping
-						})
-					);
-
-					var material,
-						geometry,
-						line;
-
-					material = new THREE.LineBasicMaterial({
-						color : 0x66ffff
-					});
-					geometry = new THREE.Geometry();
-					geometry.vertices.push(objects.cubes[distancesMinIndex1].mesh.position);
-					geometry.vertices.push(objects.cubes[objects.cubes.length - 1].mesh.position);
-					line = new THREE.Line(geometry, material);
-
-					objects.lines.push({
-						material  : material,
-						geometry  : geometry,
-						mesh      : line,
-						box1      : distancesMinIndex1,
-						box2      : objects.cubes.length - 1
-					});
-					scene.add(line);
-
-					material = new THREE.LineBasicMaterial({
-						color : 0x66ffff
-					});
-					geometry = new THREE.Geometry();
-					geometry.vertices.push(objects.cubes[distancesMinIndex2].mesh.position);
-					geometry.vertices.push(objects.cubes[objects.cubes.length - 1].mesh.position);
-					line = new THREE.Line(geometry, material);
-
-					objects.lines.push({
-						material  : material,
-						geometry  : geometry,
-						mesh      : line,
-						box1      : distancesMinIndex1,
-						box2      : objects.cubes.length - 1
-					});
-					scene.add(line);
+					createBridge(distancesMinIndex1, that.objects.cubes.length - 1, distancesMin1);
+					createBridge(distancesMinIndex2, that.objects.cubes.length - 1, distancesMin2);
 				}
 			};
 
@@ -397,47 +351,47 @@
 			this.update = function (step) {
 				world.step(step);
 
-				_.each(objects.springs, function (spring) {
+				_.each(this.objects.springs, function (spring) {
 					spring.applyForce();
 				});
 
-				that.handleKeys();
+				this.handleKeys();
 
 				var objectsToCheck = [];
 				objectsToCheck.push(gameFieldRear);
 
 /*  LOOKING FOR THE 2 NEAREST BOXES  */
-				for (var i = 0; i < objects.cubes.length; i++) {
-					var dx = objects.cubes[i].mesh.position.x - mouseIndicator.position.x,
-						dy = objects.cubes[i].mesh.position.y - mouseIndicator.position.y,
-						dz = objects.cubes[i].mesh.position.z - mouseIndicator.position.z;
+				for (var i = 0; i < this.objects.cubes.length; i++) {
+					var dx = this.objects.cubes[i].mesh.position.x - mouseIndicator.position.x,
+						dy = this.objects.cubes[i].mesh.position.y - mouseIndicator.position.y,
+						dz = this.objects.cubes[i].mesh.position.z - mouseIndicator.position.z;
 
 					distances.push(Math.sqrt(dx * dx + dy * dy + dz * dz));
-					objects.cubes[i].mesh.material.transparent = false;
+					this.objects.cubes[i].mesh.material.transparent = false;
 				}
 
 				distancesMin1      = _.min(distances);
 				distancesMinIndex1 = _.indexOf(distances, distancesMin1);
 
-				objects.cubes[distancesMinIndex1].mesh.material.transparent = true;
-				objects.cubes[distancesMinIndex1].mesh.material.opacity = 0.5;
+				this.objects.cubes[distancesMinIndex1].mesh.material.transparent = true;
+				this.objects.cubes[distancesMinIndex1].mesh.material.opacity = 0.3;
 
 				distances[distancesMinIndex1] = Infinity;
 
 				distancesMin2      = _.min(distances);
 				distancesMinIndex2 = _.indexOf(distances, distancesMin2);
 
-				objects.cubes[distancesMinIndex2].mesh.material.transparent = true;
-				objects.cubes[distancesMinIndex2].mesh.material.opacity = 0.3;
+				this.objects.cubes[distancesMinIndex2].mesh.material.transparent = true;
+				this.objects.cubes[distancesMinIndex2].mesh.material.opacity = 0.3;
 
 				distances = [];
 /* / LOOKING FOR THE 2 NEAREST BOXES */
 
 /*  REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES  */
-				for (var i = 0; i < objects.lines.length; i++) {
-					objects.lines[i].mesh.geometry.vertices[0].set(objects.cubes[objects.lines[i].box1].mesh.position);
-					objects.lines[i].mesh.geometry.vertices[1].set(objects.cubes[objects.lines[i].box2].mesh.position);
-					objects.lines[i].mesh.geometry.verticesNeedUpdate = true;
+				for (var i = 0; i < this.objects.lines.length; i++) {
+					this.objects.lines[i].mesh.geometry.vertices[0].set(this.objects.cubes[this.objects.lines[i].box1].mesh.position);
+					this.objects.lines[i].mesh.geometry.vertices[1].set(this.objects.cubes[this.objects.lines[i].box2].mesh.position);
+					this.objects.lines[i].mesh.geometry.verticesNeedUpdate = true;
 				}
 /* / REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES */
 
@@ -460,9 +414,9 @@
 				}
 
 				// Update box positions
-				for (var i = 0; i < objects.cubes.length; i++) {
-					objects.cubes[i].mesh.position.copy(objects.cubes[i].body.position);
-					objects.cubes[i].mesh.quaternion.copy(objects.cubes[i].body.quaternion);
+				for (var i = 0; i < this.objects.cubes.length; i++) {
+					this.objects.cubes[i].mesh.position.copy(this.objects.cubes[i].body.position);
+					this.objects.cubes[i].mesh.quaternion.copy(this.objects.cubes[i].body.quaternion);
 				}
 			};
 
@@ -497,10 +451,9 @@
 				document.onkeydown   = this.handleKeyDown;
 				document.onmousemove = this.handleMouseMove;
 				document.onclick     = this.handleMouseClick;
-				console.log(document);
 
-				for (var i = objects.cubes.length - 1; i >= 0; i--) {
-					scene.add(objects.cubes[i].mesh);
+				for (var i = this.objects.cubes.length - 1; i >= 0; i--) {
+					scene.add(this.objects.cubes[i].mesh);
 				}
 				
 				this.frame();
