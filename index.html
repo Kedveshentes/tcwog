@@ -30,7 +30,8 @@
 				cubes   : [],
 				lines   : [],
 				springs : []
-			}
+			};
+			this.nearestCubes;
 
 			var that        = this,
 				dt          = 0,
@@ -83,12 +84,7 @@
 			var raycaster,
 				mouseIndicator,
 				mouseIndicatorEnabled,
-				distances,
-				nearestBoxes,
-				distancesMinIndex1,
-				distancesMinIndex2,
-				distancesMin1,
-				distancesMin2;
+				distances;
 
 			var gameBoxGeometry,
 				gameBoxMaterial,
@@ -101,6 +97,10 @@
 			var gameFieldRearGeometry,
 				gameFieldRearMaterial,
 				gameFieldRear;
+
+			var obstacleGeometry,
+				obstacleMaterial,
+				obstacle;
 
 			var world,
 				solver,
@@ -119,7 +119,6 @@
 
 			var boxShape,
 				boxCannonMaterial;
-
 
 			this.initGameField = function () {
 				scene = new THREE.Scene();
@@ -165,6 +164,11 @@
 				gameFieldRear.receiveShadow = true;
 				scene.add(gameFieldRear);
 
+				obstacleGeometry = new THREE.CylinderGeometry(1, 1, 20, 32);
+				obstacleMaterial = new THREE.MeshBasicMaterial({ color : 0xffccaa });
+				obstacle         = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+				obstacle.rotation()
+				scene.add(obstacle);
 
 				var ambientLight;
 				ambientLight = new THREE.AmbientLight(0x222222);
@@ -236,9 +240,30 @@
 				var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : 0xffdddd }),
 					mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1);
 				mouseIndicator             = new THREE.Mesh(mouseIndicatorGeometry, mouseIndicatorMaterial);
+				mouseIndicatorEnabled = false;
 
-				distances    = [];
-				nearestBoxes = [];
+				distances = [];
+
+				this.nearestCubes = [];
+				for (var i = 0; i <= 2; i++) {
+					var material,
+						geometry,
+						line;
+
+					material = new THREE.LineBasicMaterial({ color : 0x66ffff });
+					geometry = new THREE.Geometry();
+					geometry.vertices.push(new THREE.Vector3(10, 0, 0));
+					geometry.vertices.push(new THREE.Vector3(-10, 0, 10));
+					line     = new THREE.Line(geometry, material);
+
+					this.nearestCubes.push({
+						distance : undefined,
+						index    : undefined,
+						line     : line
+					});
+
+					scene.add(this.nearestCubes[i].line);
+				}
 
 				mouseIndicator.visible = false;
 				scene.add(mouseIndicator);
@@ -293,6 +318,9 @@
 				pressedKeys[event.keyCode] = true;
 			};
 			this.handleKeys = function () {
+				if (pressedKeys[32]) {
+					debugger;
+				}
 				if (pressedKeys[33]) {
 					// Page Up
 					z -= 0.05;
@@ -324,7 +352,10 @@
 				mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 			};
 			this.handleMouseClick = function (event) {
-				if (mouseIndicatorEnabled && distancesMin1 <= 6 && distancesMin2 <= 6) {
+				if (mouseIndicatorEnabled && that.nearestCubes[0].distance <= 6 && that.nearestCubes[1].distance <= 6) {
+					console.log(that.nearestCubes[0].distance);
+					console.log(that.nearestCubes[1].distance);
+					console.log(that.nearestCubes[2].distance);
 					var boxMaterial    = new THREE.MeshLambertMaterial({ color : 0xdddddd }),
 						newBoxGeometry = new THREE.BoxGeometry(1, 1, 1),
 						newBoxMesh     = new THREE.Mesh(newBoxGeometry, boxMaterial),
@@ -342,8 +373,13 @@
 						mesh : newBoxMesh
 					});
 
-					createBridge(distancesMinIndex1, that.objects.cubes.length - 1, distancesMin1);
-					createBridge(distancesMinIndex2, that.objects.cubes.length - 1, distancesMin2);
+					for (var i = 0; i < that.nearestCubes.length; i++) {
+						if (that.nearestCubes[i].distance) {
+							console.log(that.nearestCubes);
+							createBridge(that.nearestCubes[i].index, that.objects.cubes.length - 1, that.nearestCubes[i].distance);
+							that.nearestCubes[i].line.remove();
+						}
+					}
 				}
 			};
 
@@ -359,41 +395,6 @@
 
 				var objectsToCheck = [];
 				objectsToCheck.push(gameFieldRear);
-
-/*  LOOKING FOR THE 2 NEAREST BOXES  */
-				for (var i = 0; i < this.objects.cubes.length; i++) {
-					var dx = this.objects.cubes[i].mesh.position.x - mouseIndicator.position.x,
-						dy = this.objects.cubes[i].mesh.position.y - mouseIndicator.position.y,
-						dz = this.objects.cubes[i].mesh.position.z - mouseIndicator.position.z;
-
-					distances.push(Math.sqrt(dx * dx + dy * dy + dz * dz));
-					this.objects.cubes[i].mesh.material.transparent = false;
-				}
-
-				distancesMin1      = _.min(distances);
-				distancesMinIndex1 = _.indexOf(distances, distancesMin1);
-
-				this.objects.cubes[distancesMinIndex1].mesh.material.transparent = true;
-				this.objects.cubes[distancesMinIndex1].mesh.material.opacity = 0.3;
-
-				distances[distancesMinIndex1] = Infinity;
-
-				distancesMin2      = _.min(distances);
-				distancesMinIndex2 = _.indexOf(distances, distancesMin2);
-
-				this.objects.cubes[distancesMinIndex2].mesh.material.transparent = true;
-				this.objects.cubes[distancesMinIndex2].mesh.material.opacity = 0.3;
-
-				distances = [];
-/* / LOOKING FOR THE 2 NEAREST BOXES */
-
-/*  REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES  */
-				for (var i = 0; i < this.objects.lines.length; i++) {
-					this.objects.lines[i].mesh.geometry.vertices[0].set(this.objects.cubes[this.objects.lines[i].box1].mesh.position);
-					this.objects.lines[i].mesh.geometry.vertices[1].set(this.objects.cubes[this.objects.lines[i].box2].mesh.position);
-					this.objects.lines[i].mesh.geometry.verticesNeedUpdate = true;
-				}
-/* / REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES */
 
 
 
@@ -413,11 +414,69 @@
 					mouseIndicator.visible = false;
 				}
 
-				// Update box positions
+/*  REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES  */
+				for (var i = 0; i < this.objects.lines.length; i++) {
+					this.objects.lines[i].mesh.geometry.vertices[0].set(this.objects.cubes[this.objects.lines[i].box1].mesh.position);
+					this.objects.lines[i].mesh.geometry.vertices[1].set(this.objects.cubes[this.objects.lines[i].box2].mesh.position);
+					this.objects.lines[i].mesh.geometry.verticesNeedUpdate = true;
+				}
+/* / REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES */
+
+/*  UPDATE CUBE POSITIONS  */
 				for (var i = 0; i < this.objects.cubes.length; i++) {
 					this.objects.cubes[i].mesh.position.copy(this.objects.cubes[i].body.position);
 					this.objects.cubes[i].mesh.quaternion.copy(this.objects.cubes[i].body.quaternion);
 				}
+/* / UPDATE CUBE POSITIONS */
+
+/*  LOOKING FOR THE 2 NEAREST BOXES  */
+				for (var i = 0; i < this.objects.cubes.length; i++) {
+					var dx = this.objects.cubes[i].mesh.position.x - mouseIndicator.position.x,
+						dy = this.objects.cubes[i].mesh.position.y - mouseIndicator.position.y,
+						dz = this.objects.cubes[i].mesh.position.z - mouseIndicator.position.z;
+
+					distances.push(Math.sqrt(dx * dx + dy * dy + dz * dz));
+					this.objects.cubes[i].mesh.material.transparent = false;
+				}
+
+				var distancesMin,
+					distancesMinIndex;
+
+				for (var i = 0; i <= 2; i++) {
+					distancesMin      = _.min(distances);
+					distancesMinIndex = _.indexOf(distances, distancesMin);
+
+					if (mouseIndicatorEnabled && distancesMin <= 6) {
+						var material,
+							geometry,
+							line;
+
+						material = new THREE.LineBasicMaterial({
+							color : 0x66ffff
+						});
+						geometry = new THREE.Geometry();
+						geometry.vertices.push(this.objects.cubes[distancesMinIndex].mesh.position);
+						geometry.vertices.push(mouseIndicator.position);
+						line = new THREE.Line(geometry, material);
+
+						this.nearestCubes[i].line.visible = true;
+						this.nearestCubes[i].line.geometry.vertices[0].set(this.objects.cubes[distancesMinIndex].mesh.position.x, this.objects.cubes[distancesMinIndex].mesh.position.y, this.objects.cubes[distancesMinIndex].mesh.position.z);
+						this.nearestCubes[i].line.geometry.vertices[1].set(mouseIndicator.position.x, mouseIndicator.position.y, mouseIndicator.position.z);
+						this.nearestCubes[i].line.geometry.verticesNeedUpdate = true;
+
+						this.nearestCubes[i].distance = distancesMin;
+						this.nearestCubes[i].index    = distancesMinIndex;
+					} else {
+						this.nearestCubes[i].line.visible = false;
+						this.nearestCubes[i].distance = undefined;
+						this.nearestCubes[i].index    = undefined;
+					}
+
+					distances[distancesMinIndex] = Infinity;
+				}
+
+				distances = [];
+/* / LOOKING FOR THE 2 NEAREST BOXES */
 			};
 
 			this.render = function () {
