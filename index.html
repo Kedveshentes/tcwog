@@ -138,12 +138,12 @@
 				renderer.setClearColor( scene.fog.color, 1 );
 
 
-				gameBoxGeometry = new THREE.BoxGeometry(50, 50, 50);
+				/*gameBoxGeometry = new THREE.BoxGeometry(50, 50, 50);
 				gameBoxMaterial = new THREE.MeshLambertMaterial({ color : 0x669999 , side : THREE.BackSide });
 				gameBox         = new THREE.Mesh(gameBoxGeometry, gameBoxMaterial);
 				gameBox.receiveShadow = true;
 				scene.add(gameBox);
-
+*/
 
 				gameFieldGeometry = new THREE.PlaneBufferGeometry(70, 6, 50, 50);
 				gameFieldGeometry.applyMatrix(new THREE.Matrix4().makeRotationX(- Math.PI / 2));
