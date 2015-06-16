@@ -1,34 +1,22 @@
-/*var mymodule = require('./modules/mymodule.js');
+var express = require('express'),
+	CANNON  = require('cannon'),
+	_       = require('underscore'),
+	server  = require('http').createServer(app),
+	io      = require('socket.io').listen(server),
+	app     = express();
 
-function datCallback (error, data) {
-	console.log(data);
-}
-mymodule(process.argv[2], process.argv[3], datCallback);*/
+server.listen(8001);
+
+var solver = new CANNON.GSSolver();
 
 
 
-
-/*var lslib = require('./modules/mymodule.js');
-
-var dirname = process.argv[2];
-var ext = process.argv[3];
-
-lslib(dirname, ext, function(err, files) {
-  for (i = 0; i < files.length; i++) {
-    console.log(files[i]);
-  }
-});*/
-
-var filterFn = require('./modules/mymodule.js');
-var dir = process.argv[2];
-var filterStr = process.argv[3];
-
-filterFn(dir, filterStr, function (err, list) {
-	if (err) {
-		return console.error('There was an error:', err);
-	}
-
-	list.forEach(function (file) {
-		console.log(file);
-	});
+io.on('connection', function (socket) {
+	console.log('Client connected, sending CANNON solver');
+	socket.emit('cannon.solver', { solver : 'world' });
 });
+
+/*
+io.sockets.on('connection', function (socket) {
+	console.log('msg');
+})*/

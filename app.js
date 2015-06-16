@@ -86,8 +86,7 @@ var Game = function () {
 		obstacleMaterial,
 		obstacle;
 
-	var world,
-		solver,
+	var solver,
 		split;
 
 	var springs;
@@ -175,25 +174,25 @@ var Game = function () {
 
 
 		solver = new CANNON.GSSolver();
-		world  = new CANNON.World();
-		world.gravity.set(0, -20, 0);
-		world.quatNormalizeSkip = 0;
-		world.quatNormalizeFast = false;
+		this.world  = new CANNON.World();
+		this.world.gravity.set(0, -20, 0);
+		this.world.quatNormalizeSkip = 0;
+		this.world.quatNormalizeFast = false;
 
-		world.defaultContactMaterial.contactEquationStiffness = 1e9;
-		world.defaultContactMaterial.contactEquationRelaxation = 4;
+		this.world.defaultContactMaterial.contactEquationStiffness = 1e9;
+		this.world.defaultContactMaterial.contactEquationRelaxation = 4;
 
 		solver.iterations = 7;
 		solver.tolerance = 0.1;
 		split = true;
 		if (split) {
-			world.solver = new CANNON.SplitSolver(solver);
+			this.world.solver = new CANNON.SplitSolver(solver);
 		}
 		else {
-			world.solver = solver;
+			this.world.solver = solver;
 		}
 
-		world.broadphase = new CANNON.NaiveBroadphase();
+		this.world.broadphase = new CANNON.NaiveBroadphase();
 
 		groundMaterial = new CANNON.Material();
 
@@ -201,7 +200,7 @@ var Game = function () {
 		groundBody     = new CANNON.Body({ mass : 0 , material : groundMaterial });
 		groundBody.addShape(groundShape);
 		groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), - Math.PI / 2);
-		world.add(groundBody);
+		this.world.add(groundBody);
 
 
 		planeMaterial = new CANNON.Material();
@@ -210,13 +209,13 @@ var Game = function () {
 		planeRear     = new CANNON.Body({ mass: 0 , material : planeMaterial });
 		planeRear.addShape(planeShape);
 		planeRear.position.set(0, 0, -0.5);
-		world.add(planeRear);
+		this.world.add(planeRear);
 
 		planeFront    = new CANNON.Body({ mass: 0 , material : planeMaterial });
 		planeFront.addShape(planeShape);
 		planeFront.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), - Math.PI);
 		planeFront.position.set(0, 0, 0.55);
-		world.add(planeFront);
+		this.world.add(planeFront);
 
 		raycaster = new THREE.Raycaster();
 	};
@@ -261,13 +260,13 @@ var Game = function () {
 		boxCannonMaterial = new CANNON.Material();
 		
 		var boxCannonMaterial_ground = new CANNON.ContactMaterial(groundMaterial, boxCannonMaterial, { friction: 1, restitution: 0 });
-		world.addContactMaterial(boxCannonMaterial_ground);
+		this.world.addContactMaterial(boxCannonMaterial_ground);
 		
 		var boxCannonMaterial_boxCannonMaterial = new CANNON.ContactMaterial(boxCannonMaterial, boxCannonMaterial, { friction: 0.9, restitution: 0.5 });
-		world.addContactMaterial(boxCannonMaterial_boxCannonMaterial);
+		this.world.addContactMaterial(boxCannonMaterial_boxCannonMaterial);
 		
 		var boxCannonMaterial_planeMaterial = new CANNON.ContactMaterial(boxCannonMaterial, planeMaterial, { friction: 0, restitution: 0 });
-		world.addContactMaterial(boxCannonMaterial_planeMaterial);
+		this.world.addContactMaterial(boxCannonMaterial_planeMaterial);
 
 		var boxGeometry = new THREE.BoxGeometry(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2);
 
@@ -280,7 +279,7 @@ var Game = function () {
 			var boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
 			var boxBody = new CANNON.Body({ mass : 3, material : boxCannonMaterial });
 			boxBody.addShape(boxShape);
-			world.add(boxBody);
+			this.world.add(boxBody);
 			scene.add(boxMesh);
 			boxBody.position.set(x, y, z);
 			boxMesh.position.set(x, y, z);
@@ -345,7 +344,7 @@ var Game = function () {
 				newBoxBody     = new CANNON.Body({ mass : 3, material : boxCannonMaterial });
 
 			newBoxBody.addShape(boxShape);
-			world.add(newBoxBody);
+			that.world.add(newBoxBody);
 			scene.add(newBoxMesh);
 			newBoxBody.position.set(mouseIndicator.position.x, mouseIndicator.position.y, mouseIndicator.position.z);
 			newBoxMesh.position.set(mouseIndicator.position.x, mouseIndicator.position.y, mouseIndicator.position.z);
@@ -367,7 +366,7 @@ var Game = function () {
 
 
 	this.update = function (step) {
-		world.step(step);
+		this.world.step(step);
 
 		_.each(this.objects.springs, function (spring) {
 			spring.applyForce();
@@ -505,3 +504,8 @@ var Game = function () {
 
 var game = new Game();
 game.init();
+
+var socket = io.connect('http://localhost:8001');
+socket.on('cannon.solver', function (data) {
+	console.log(data);
+});
