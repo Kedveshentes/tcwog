@@ -182,16 +182,6 @@ var Game = function () {
 		planeFront.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), - Math.PI);
 		planeFront.position.set(0, 0, 0.52);
 		this.world.add(planeFront);
-
-		/*this.solver         = solver;
-		this.this.world          = this.world;
-		this.groundMaterial = groundMaterial;
-		this.groundShape    = groundShape;
-		this.groundBody     = groundBody;
-		this.planeMaterial  = planeMaterial;
-		this.planeShape     = planeShape;
-		this.planeRear      = planeRear;
-		this.planeFront     = planeFront;*/
 	};
 
 	this.initObjects = function () {
@@ -294,21 +284,19 @@ io.on('connection', function (socket) {
 
 	socket.on('newCube', function (newCube) {
 		game.addToGameWorld(newCube, socket.color);
+		newCube.color = socket.color;
+		io.sockets.emit('addCube', newCube);
 	});
+
 	socket.on('disconnect', function () {
 		delete game.objects.mouseIndicators[socket.id];
 		io.sockets.emit('deleteMouseIndicator', socket.id);
 	});
 
-
-
 	socket.on('reset', function () {
 		game.reset();
-		console.log('asd');
 		io.sockets.emit('reset');
 	});
-
-
 
 	socket.on('mouseIndicatorMove', function (mouseIndicatorPosition) {
 		game.objects.mouseIndicators[socket.id] = {
@@ -316,13 +304,7 @@ io.on('connection', function (socket) {
 			position  : mouseIndicatorPosition
 		};
 /*		socket.emit('myMouseMoved', game.objects.mouseIndicators[socket.id]);
-*/		io.sockets.emit('mouseMoved',game.objects.mouseIndicators);
+*/		
+		socket.broadcast.emit('mouseMoved', {id : socket.id , mouseIndicator : game.objects.mouseIndicators[socket.id]});
 	});
 });
-
-
-
-
-/*io.sockets.on('connection', function (socket) {
-	console.log('msg');
-})*/

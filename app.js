@@ -28,7 +28,7 @@ var Game = function () {
 	};
 
 
-	this.createBridge = function (index1, index2, restLength) {
+	this.createBridge = function (index1, index2) {
 		var material,
 			geometry,
 			line;
@@ -168,7 +168,7 @@ var Game = function () {
 
 
 	this.initObjects = function (data) {
-		this.mySocketId = data.socketId;
+		this.mySocketId = data.id;
 		this.color      = data.color;
 		this.objects    = {
 			mouseIndicators : {},
@@ -200,7 +200,7 @@ var Game = function () {
 		}
 
 
-		var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : 0xffdddd }),
+		var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(this.color) }),
 /*			mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1),*/
 			mouseIndicator         = new THREE.Mesh(this.boxGeometry, mouseIndicatorMaterial);
 
@@ -312,6 +312,7 @@ var Game = function () {
 				y : intersection[0].point.y,
 				z : intersection[0].point.z
 			});
+			this.objects.mouseIndicators[this.mySocketId].position.set(intersection[0].point.x, intersection[0].point.y, intersection[0].point.z);
 		} else {
 			mouseIndicatorEnabled = false;
 		}
@@ -427,18 +428,25 @@ var game = new Game();
 var socket = io(location.origin);
 
 socket.on('refresh', function (data) {
-	for (var i = 0; i < data.cubes.length; i++) {
-		var showMeMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(data.cubes[i].color) || 0xffffff }),
-/*			showMeGeometry = new THREE.BoxGeometry(1, 1, 1),*/
-			showMe         = new THREE.Mesh(game.boxGeometry, showMeMaterial);
-
-		game.addToGameScene(showMe);
-		game.objects.showMe.push({
-			mesh : showMe
-		});
-
+	for (var i = 0; i < game.objects.showMe.length; i++) {
 		game.objects.showMe[i].mesh.position.copy(data.cubes[i].position);
 		game.objects.showMe[i].mesh.quaternion.copy(data.cubes[i].q);
+	}
+});
+
+socket.on('addCube', function (cube) {
+	var showMeMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(cube.color) || 0xffffff }),
+		/*showMeGeometry = new THREE.BoxGeometry(1, 1, 1),*/
+		showMe         = new THREE.Mesh(game.boxGeometry, showMeMaterial);
+
+	showMe.position.set(cube.position.x, cube.position.y, cube.position.z);
+	game.addToGameScene(showMe);
+
+	game.objects.showMe.push({
+		mesh : showMe
+	});
+	for (var i = 0; i < cube.nearestCubes.length; i++) {
+		game.createBridge(cube.nearestCubes[i].index, game.objects.showMe.length - 1);
 	}
 });
 
@@ -447,24 +455,29 @@ socket.on('deleteMouseIndicator', function (socketId) {
 	delete game.objects.mouseIndicators[socketId];
 });
 
-socket.on('mouseMoved', function (mouseIndicators) {
-	for(property in mouseIndicators) {
-		if (game.objects.mouseIndicators.hasOwnProperty(property)) {
-			game.objects.mouseIndicators[property].position.set(mouseIndicators[property].position.x, mouseIndicators[property].position.y, mouseIndicators[property].position.z);
-			game.objects.mouseIndicators[property].material.color = new THREE.Color(mouseIndicators[property].color);
-			game.objects.mouseIndicators[property].material.transparent = true;
-			game.objects.mouseIndicators[property].material.opacity = 0.5;
-		} else {
-			var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(mouseIndicators[property].color) , opacity : 0.5 , transparent : true }),
+socket.on('mouseMoved', function (otherPlayersMouseAndId) {
+	var otherMouse = otherPlayersMouseAndId.mouseIndicator,
+		id         = otherPlayersMouseAndId.id;
+
+	if (game.objects.mouseIndicators.hasOwnProperty(id)) {
+		game.objects.mouseIndicators[id].position.set(otherMouse.position.x, otherMouse.position.y, otherMouse.position.z);
+		game.objects.mouseIndicators[id].material.color = new THREE.Color(otherMouse.color);
+		game.objects.mouseIndicators[id].material.transparent = true;
+		game.objects.mouseIndicators[id].material.opacity = 0.5;
+	} else {
+		var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(otherMouse.color) , opacity : 0.5 , transparent : true }),
 /*				mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1),*/
-				mouseIndicator         = new THREE.Mesh(game.boxGeometry, mouseIndicatorMaterial);
+			mouseIndicator         = new THREE.Mesh(game.boxGeometry, mouseIndicatorMaterial);
 
-			mouseIndicator.position.set(mouseIndicators[property].position.x, mouseIndicators[property].position.y, mouseIndicators[property].position.z);
+		mouseIndicator.position.set(
+			otherMouse.position.x,
+			otherMouse.position.y,
+			otherMouse.position.z
+		);
 
-			game.objects.mouseIndicators[property] = mouseIndicator;
+		game.objects.mouseIndicators[id] = mouseIndicator;
 
-			game.addToGameScene(game.objects.mouseIndicators[property]);
-		}
+		game.addToGameScene(game.objects.mouseIndicators[id]);
 	}
 });
 
