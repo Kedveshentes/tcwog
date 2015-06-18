@@ -1,16 +1,3 @@
-/*
-var app     = require('http').createServer(handler);
-var io      = require('socket.io').listen(app);
-var fs      = require("fs");
-*/
-
-/*app.get('/', function (req,res) {
-  res.sendFile(path.join(__dirname+'/index.html'));
-  //__dirname : It will resolve to your project folder.
-});*/
-
-
-
 var express = require('express');
 var app = express();
 app.use('/', express.static(__dirname + '/'));
@@ -20,13 +7,11 @@ var fs = require('fs');
 var CANNON = require('cannon');
 var _ = require('underscore');
 
-http.listen(process.env.PORT || 3000, function(){
+http.listen(process.env.PORT || 3000, function () {
   console.log('listening on', http.address().port);
 });
 
 http.listen(8010);
-
-
 
 
 function handler (req, res) {
@@ -44,8 +29,6 @@ function handler (req, res) {
 
 
 
-
-
 var Game = function () {
 	this.utils = {
 		timestamp : function () {
@@ -59,7 +42,71 @@ var Game = function () {
 	};
 
 
-	var createBridge = function (index1, index2, restLength) {
+
+
+
+	var previousTick = this.utils.timestamp(),
+		frameRate = 60,
+		dt = 0,
+		now,
+		step = 1/60,
+		last = this.utils.timestamp();
+
+	this.frame = function () {
+		now = that.utils.timestamp();
+		if (previousTick + (1000 / frameRate) < now) {
+			previousTick = now;
+			that.update();
+			console.log(previousTick);
+		}
+		if (now - previousTick < (1000 / frameRate) - 16) {
+			setTimeout(that.frame);
+		}
+		else {
+			setImmediate(that.frame);
+		}
+	};
+
+
+
+
+
+
+	this.update = function () {
+		this.world.step(step);
+
+		_.each(this.objects.springs, function (spring) {
+			spring.applyForce();
+		});
+	};
+
+	this.reset = function () {
+		this.init();
+	};
+
+	this.init = function () {
+		this.initGameField();
+		this.initObjects();
+		this.frame();
+	};
+
+	this.addToGameWorld = function (addThis, color) {
+		boxBody  = new CANNON.Body({ mass : 3, material : boxCannonMaterial });
+		boxBody.addShape(boxShape);
+		boxBody.position.set(addThis.position.x, addThis.position.y, addThis.position.z);
+		boxBody.color = color;
+		this.objects.cubes.push({
+			body : boxBody
+		});
+		this.world.add(boxBody);
+
+		for (var i = 0; i < addThis.nearestCubes.length; i++) {
+			createSpring(addThis.nearestCubes[i].index, this.objects.cubes.length - 1, addThis.nearestCubes[i].distance);
+		}
+	};
+
+	
+	var createSpring = function (index1, index2, restLength) {
 		that.objects.springs.push(
 			new CANNON.Spring(that.objects.cubes[index1].body, that.objects.cubes[index2].body, {
 				localAnchorA : new CANNON.Vec3(0, 0, 0),
@@ -134,7 +181,7 @@ var Game = function () {
 		planeFront    = new CANNON.Body({ mass: 0 , material : planeMaterial });
 		planeFront.addShape(planeShape);
 		planeFront.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), - Math.PI);
-		planeFront.position.set(0, 0, 0.55);
+		planeFront.position.set(0, 0, 0.52);
 		this.world.add(planeFront);
 
 		/*this.solver         = solver;
@@ -146,8 +193,6 @@ var Game = function () {
 		this.planeShape     = planeShape;
 		this.planeRear      = planeRear;
 		this.planeFront     = planeFront;*/
-
-		this.frame();
 	};
 
 	this.initObjects = function () {
@@ -174,7 +219,7 @@ var Game = function () {
 
 		for (var i = 0; i < 3; i++) {
 			var x = 0;
-			var y = i * 3;
+			var y = 5 + i * 4;
 			var z = 0;
 
 
@@ -187,63 +232,11 @@ var Game = function () {
 			});
 		}
 
-		createBridge(0, 1);
-		createBridge(1, 2);
-		createBridge(2, 0);
-	};
-	this.init = function () {
-		this.initGameField();
-		this.initObjects();
+		createSpring(0, 1);
+		createSpring(1, 2);
+		createSpring(2, 0);
 	};
 
-	this.addToGameWorld = function (addThis, color) {
-		boxBody  = new CANNON.Body({ mass : 3, material : boxCannonMaterial });
-		boxBody.addShape(boxShape);
-		boxBody.position.set(addThis.position.x, addThis.position.y, addThis.position.z);
-		boxBody.color = color;
-		this.objects.cubes.push({
-			body : boxBody
-		});
-		this.world.add(boxBody);
-
-		for (var i = 0; i < addThis.nearestCubes.length; i++) {
-			createBridge(addThis.nearestCubes[i].index, this.objects.cubes.length - 1, addThis.nearestCubes[i].distance);
-		}
-	};
-
-
-	var previousTick = this.utils.timestamp(),
-		frameRate = 60,
-		dt = 0,
-		now,
-		step = 1/60,
-		last = this.utils.timestamp();
-
-	this.frame = function () {
-		now = that.utils.timestamp();
-		if (previousTick + (1000 / frameRate) < now) {
-			previousTick = now;
-			that.update();
-		}
-		if (now - previousTick < (1000 / frameRate) - 16) {
-			setTimeout(that.frame);
-		}
-		else {
-			setImmediate(that.frame);
-		}
-	};
-
-
-	this.update = function () {
-		this.world.step(step);
-
-		_.each(this.objects.springs, function (spring) {
-			spring.applyForce();
-		});
-	};
-	this.reset = function () {
-		this.init();
-	};
 };
 
 
@@ -277,18 +270,6 @@ io.on('connection', function (socket) {
 	socket.emit('mySocketId', socket.id);
 
 	socket.color = 'rgb(' + Math.floor(Math.random()*255) + ',' + Math.floor(Math.random()*255) + ',' + Math.floor(Math.random()*255) + ')';
-	/*socket.emit('cannon', {
-		// solver         : game.solver,
-		// world          : game.world,
-		// groundMaterial : game.groundMaterial,
-		// groundShape    : game.groundShape,
-		// groundBody     : game.groundBody,
-		// planeMaterial  : game.planeMaterial,
-		// planeShape     : game.planeShape,
-		// planeRear      : game.planeRear,
-		// planeFront     : game.planeFront
-	});*/
-	
 	setInterval(function () {
 		asd(socket);
 	}, 16);

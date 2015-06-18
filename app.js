@@ -13,7 +13,7 @@ var Game = function () {
 
 	var that        = this,
 		dt          = 0,
-		step        = 1/60,
+		step        = 1/30,
 		last        = this.utils.timestamp(),
 		fpsmeter    = new FPSMeter(document.getElementById('fpsmeter'), { decimals: 0, graph: true, theme: 'dark', left: '5px' }),
 		pressedKeys = [],
@@ -378,21 +378,17 @@ var Game = function () {
 	this.init = function () {
 		this.initGameField();
 		this.initObjects();
-
 		raycaster = new THREE.Raycaster();
-
 		renderer.setSize(window.innerWidth, window.innerHeight);
-
 		document.body.appendChild(renderer.domElement);
 		document.onkeyup     = this.handleKeyUp;
 		document.onkeydown   = this.handleKeyDown;
 		document.onmousemove = this.handleMouseMove;
 		document.onclick     = this.handleMouseClick;
-		
 		this.frame();
 	};
 
-	
+
 	this.reset = function () {
 		for (var i = 3; i < this.objects.showMe.length; i++) {
 			this.removeFromGameScene(this.objects.showMe[i].mesh);
