@@ -392,6 +392,7 @@ var Game = function () {
 		this.frame();
 	};
 
+	
 	this.reset = function () {
 		for (var i = 3; i < this.objects.showMe.length; i++) {
 			this.removeFromGameScene(this.objects.showMe[i].mesh);
