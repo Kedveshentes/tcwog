@@ -18,10 +18,6 @@ var Game = function () {
 			maxLength : 7
 		}
 	};
-	this.objects = {
-		cubes     : [],
-		springs   : []
-	};
 
 
 	var createBridge = function (index1, index2, restLength) {
@@ -34,6 +30,11 @@ var Game = function () {
 				damping      : that.utils.springs.damping
 			})
 		);
+
+		that.objects.lines.push({
+			index1 : index1,
+			index2 : index2
+		});
 	};
 
 	var that = this;
@@ -50,10 +51,6 @@ var Game = function () {
 	var boxCannonMaterial;
 	var halfExtents;
 	var boxBody;
-
-
-
-
 
 
 	this.initGameField = function () {
@@ -113,7 +110,15 @@ var Game = function () {
 
 		this.frame();
 	};
+
 	this.initObjects = function () {
+		this.objects = {
+			mouseIndicators : {},
+			cubes           : [],
+			springs         : [],
+			lines           : []
+		};
+
 		halfExtents       = new CANNON.Vec3(0.5, 0.5, 0.5);
 		boxShape          = new CANNON.Box(halfExtents);
 		boxCannonMaterial = new CANNON.Material();
@@ -152,10 +157,11 @@ var Game = function () {
 		this.initObjects();
 	};
 
-	this.addToGameWorld = function (addThis) {
+	this.addToGameWorld = function (addThis, color) {
 		boxBody  = new CANNON.Body({ mass : 3, material : boxCannonMaterial });
 		boxBody.addShape(boxShape);
 		boxBody.position.set(addThis.position.x, addThis.position.y, addThis.position.z);
+		boxBody.color = color;
 		this.objects.cubes.push({
 			body : boxBody
 		});
@@ -180,27 +186,13 @@ var Game = function () {
 			previousTick = now;
 			that.update();
 		}
-		// if we are more than 16 milliseconds away from the next tick
 		if (now - previousTick < (1000 / frameRate) - 16) {
 			setTimeout(that.frame);
 		}
 		else {
 			setImmediate(that.frame);
 		}
-
-		/*now  = that.utils.timestamp();
-		dt   = dt + Math.min(1, (now - last) / 1000);
-		while (dt > step) {
-			dt = dt - step;
-			that.update(step);
-		}
-		that.render(dt);
-		last = now;
-		requestAnimationFrame(that.frame);*/
 	};
-
-
-
 
 
 	this.update = function () {
@@ -210,28 +202,20 @@ var Game = function () {
 			spring.applyForce();
 		});
 	};
+	this.reset = function () {
+		this.init();
+	};
 };
-
-
-
-
-
-
-
-
-
-
-
 
 
 var game = new Game();
 game.init();
 
 
-
 function asd (socket) {
 	var send = {
-		cubes : []
+		cubes : [],
+		lines : []
 	};
 	for (var i = 0; i < game.objects.cubes.length; i++) {
 		send.cubes.push({
@@ -240,8 +224,10 @@ function asd (socket) {
 				y : Math.round(game.objects.cubes[i].body.position.y * 100000) / 100000,
 				z : Math.round(game.objects.cubes[i].body.position.z * 100000) / 100000
 			},
-			q : game.objects.cubes[i].body.quaternion
+			q        : game.objects.cubes[i].body.quaternion,
+			color    : game.objects.cubes[i].body.color
 		});
+		send.lines           = game.objects.lines;
 	}
 	socket.emit('cannon', send);
 }
@@ -249,6 +235,9 @@ function asd (socket) {
 
 
 io.on('connection', function (socket) {
+	socket.emit('mySocketId', socket.id);
+
+	socket.color = 'rgb(' + Math.floor(Math.random()*255) + ',' + Math.floor(Math.random()*255) + ',' + Math.floor(Math.random()*255) + ')';
 	/*socket.emit('cannon', {
 		// solver         : game.solver,
 		// world          : game.world,
@@ -266,9 +255,33 @@ io.on('connection', function (socket) {
 	}, 16);
 
 	socket.on('newCube', function (newCube) {
-		game.addToGameWorld(newCube);
+		game.addToGameWorld(newCube, this.color);
+	});
+	socket.on('disconnect', function () {
+		delete game.objects.mouseIndicators[socket.id];
+		io.sockets.emit('deleteMouseIndicator', socket.id);
+	});
+
+
+
+	socket.on('reset', function () {
+		game.reset();
+		io.sockets.emit('reset');
+	});
+
+
+
+	socket.on('mouseIndicatorMove', function (mouseIndicatorPosition) {
+		game.objects.mouseIndicators[socket.id] = {
+			color     : socket.color,
+			position  : mouseIndicatorPosition
+		};
+/*		socket.emit('myMouseMoved', game.objects.mouseIndicators[socket.id]);
+*/		io.sockets.emit('mouseMoved',game.objects.mouseIndicators);
 	});
 });
+
+
 
 
 /*io.sockets.on('connection', function (socket) {
