@@ -20,9 +20,13 @@ var fs = require('fs');
 var CANNON = require('cannon');
 var _ = require('underscore');
 
-app.listen(3000);
+http.listen(process.env.PORT || 3000, function(){
+  console.log('listening on', http.address().port);
+});
 
 http.listen(8010);
+
+
 
 
 function handler (req, res) {
