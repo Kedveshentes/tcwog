@@ -1,11 +1,46 @@
-var express = require('express'),
-	CANNON  = require('cannon'),
-	_       = require('underscore'),
-	server  = require('http').createServer(app),
-	io      = require('socket.io').listen(server),
-	app     = express();
+/*
+var app     = require('http').createServer(handler);
+var io      = require('socket.io').listen(app);
+var fs      = require("fs");
+*/
 
-server.listen(8004);
+/*app.get('/', function (req,res) {
+  res.sendFile(path.join(__dirname+'/index.html'));
+  //__dirname : It will resolve to your project folder.
+});*/
+
+
+
+var express = require('express');
+var app = express();
+app.use('/', express.static(__dirname + '/'));
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
+var fs = require('fs');
+var CANNON = require('cannon');
+var _ = require('underscore');
+
+app.listen(3000);
+
+http.listen(8010);
+
+
+function handler (req, res) {
+  fs.readFile(__dirname + '/index.html',
+  function (err, data) {
+    if (err) {
+      res.writeHead(500);
+      return res.end('Error loading index.html');
+    }
+
+    res.writeHead(200);
+    res.end(data);
+  });
+}
+
+
+
+
 
 var Game = function () {
 	this.utils = {
