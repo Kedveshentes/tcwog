@@ -7,9 +7,10 @@ var Game = function () {
 			stiffness : 700,
 			damping   : 30,
 			maxLength : 7
-		},
+		}
 	};
 	this.objects = {
+		showMe    : [],
 		cubes     : [],
 		lines     : [],
 		springs   : [],
@@ -25,18 +26,12 @@ var Game = function () {
 		pressedKeys = [],
 		mouse       = new THREE.Vector2();
 
+	this.addToGameScene = function (addThis) {
+		scene.add(addThis);
+	};
+
 
 	var createBridge = function (index1, index2, restLength) {
-		that.objects.springs.push(
-			new CANNON.Spring(that.objects.cubes[index1].body, that.objects.cubes[index2].body, {
-				localAnchorA : new CANNON.Vec3(0, 0, 0),
-				localAnchorB : new CANNON.Vec3(0, 0, 0),
-				restLength   : restLength || 5,
-				stiffness    : that.utils.springs.stiffness,
-				damping      : that.utils.springs.damping
-			})
-		);
-
 		var material,
 			geometry,
 			line;
@@ -45,8 +40,8 @@ var Game = function () {
 			color : 0x66ffff
 		});
 		geometry = new THREE.Geometry();
-		geometry.vertices.push(that.objects.cubes[index1].mesh.position);
-		geometry.vertices.push(that.objects.cubes[index2].mesh.position);
+		geometry.vertices.push(that.objects.showMe[index1].mesh.position);
+		geometry.vertices.push(that.objects.showMe[index2].mesh.position);
 		line = new THREE.Line(geometry, material);
 
 		that.objects.lines.push({
@@ -172,51 +167,6 @@ var Game = function () {
 		spotlight.castShadow          = true;
 		scene.add(spotlight);
 
-
-		solver = new CANNON.GSSolver();
-		this.world  = new CANNON.World();
-		this.world.gravity.set(0, -20, 0);
-		this.world.quatNormalizeSkip = 0;
-		this.world.quatNormalizeFast = false;
-
-		this.world.defaultContactMaterial.contactEquationStiffness = 1e9;
-		this.world.defaultContactMaterial.contactEquationRelaxation = 4;
-
-		solver.iterations = 7;
-		solver.tolerance = 0.1;
-		split = true;
-		if (split) {
-			this.world.solver = new CANNON.SplitSolver(solver);
-		}
-		else {
-			this.world.solver = solver;
-		}
-
-		this.world.broadphase = new CANNON.NaiveBroadphase();
-
-		groundMaterial = new CANNON.Material();
-
-		groundShape    = new CANNON.Plane();
-		groundBody     = new CANNON.Body({ mass : 0 , material : groundMaterial });
-		groundBody.addShape(groundShape);
-		groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), - Math.PI / 2);
-		this.world.add(groundBody);
-
-
-		planeMaterial = new CANNON.Material();
-		planeShape    = new CANNON.Plane();
-
-		planeRear     = new CANNON.Body({ mass: 0 , material : planeMaterial });
-		planeRear.addShape(planeShape);
-		planeRear.position.set(0, 0, -0.5);
-		this.world.add(planeRear);
-
-		planeFront    = new CANNON.Body({ mass: 0 , material : planeMaterial });
-		planeFront.addShape(planeShape);
-		planeFront.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), - Math.PI);
-		planeFront.position.set(0, 0, 0.55);
-		this.world.add(planeFront);
-
 		raycaster = new THREE.Raycaster();
 	};
 
@@ -254,21 +204,8 @@ var Game = function () {
 		scene.add(mouseIndicator);
 
 
-		var halfExtents = new CANNON.Vec3(0.5, 0.5, 0.5);
-
-		boxShape          = new CANNON.Box(halfExtents);
-		boxCannonMaterial = new CANNON.Material();
-		
-		var boxCannonMaterial_ground = new CANNON.ContactMaterial(groundMaterial, boxCannonMaterial, { friction: 1, restitution: 0 });
-		this.world.addContactMaterial(boxCannonMaterial_ground);
-		
-		var boxCannonMaterial_boxCannonMaterial = new CANNON.ContactMaterial(boxCannonMaterial, boxCannonMaterial, { friction: 0.9, restitution: 0.5 });
-		this.world.addContactMaterial(boxCannonMaterial_boxCannonMaterial);
-		
-		var boxCannonMaterial_planeMaterial = new CANNON.ContactMaterial(boxCannonMaterial, planeMaterial, { friction: 0, restitution: 0 });
-		this.world.addContactMaterial(boxCannonMaterial_planeMaterial);
-
-		var boxGeometry = new THREE.BoxGeometry(halfExtents.x * 2, halfExtents.y * 2, halfExtents.z * 2);
+		var extents     = new THREE.Vector3(1, 1, 1);
+		var boxGeometry = new THREE.BoxGeometry(extents.x, extents.y, extents.z);
 
 		for (var i = 0; i < 3; i++) {
 			var x = 0;
@@ -277,23 +214,14 @@ var Game = function () {
 
 			var boxMaterial = new THREE.MeshLambertMaterial({ color : 0x99ffff });
 			var boxMesh = new THREE.Mesh(boxGeometry, boxMaterial);
-			var boxBody = new CANNON.Body({ mass : 3, material : boxCannonMaterial });
-			boxBody.addShape(boxShape);
-			this.world.add(boxBody);
 			scene.add(boxMesh);
-			boxBody.position.set(x, y, z);
 			boxMesh.position.set(x, y, z);
 			boxMesh.castShadow    = true;
 			boxMesh.receiveShadow = true;
 			this.objects.cubes.push({
-				body : boxBody,
 				mesh : boxMesh
 			});
 		}
-
-		createBridge(0, 1);
-		createBridge(1, 2);
-		createBridge(2, 0);
 	};
 
 	this.handleKeyUp = function (event) {
@@ -337,41 +265,44 @@ var Game = function () {
 		mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
 	};
 	this.handleMouseClick = function (event) {
-		if (mouseIndicatorEnabled && that.nearestCubes[0].distance <= that.utils.springs.maxLength && that.nearestCubes[1].distance <= that.utils.springs.maxLength) {
-			var boxMaterial    = new THREE.MeshLambertMaterial({ color : 0xdddddd }),
-				newBoxGeometry = new THREE.BoxGeometry(1, 1, 1),
-				newBoxMesh     = new THREE.Mesh(newBoxGeometry, boxMaterial),
-				newBoxBody     = new CANNON.Body({ mass : 3, material : boxCannonMaterial });
+		// if (mouseIndicatorEnabled && that.nearestCubes[0].distance <= that.utils.springs.maxLength && that.nearestCubes[1].distance <= that.utils.springs.maxLength) {
 
-			newBoxBody.addShape(boxShape);
-			that.world.add(newBoxBody);
-			scene.add(newBoxMesh);
-			newBoxBody.position.set(mouseIndicator.position.x, mouseIndicator.position.y, mouseIndicator.position.z);
-			newBoxMesh.position.set(mouseIndicator.position.x, mouseIndicator.position.y, mouseIndicator.position.z);
-			newBoxMesh.castShadow    = true;
-			newBoxMesh.receiveShadow = true;
-			that.objects.cubes.push({
-				body : newBoxBody,
-				mesh : newBoxMesh
-			});
+			var data = {};
+
+			data.position = mouseIndicator.position;
+			data.nearestCubes = [];
 
 			for (var i = 0; i < that.nearestCubes.length; i++) {
-				if (that.nearestCubes[i].distance) {
-					createBridge(that.nearestCubes[i].index, that.objects.cubes.length - 1, that.nearestCubes[i].distance);
-					that.nearestCubes[i].line.remove();
+				if (that.nearestCubes[i].index != undefined) {
+					data.nearestCubes.push({
+						distance : that.nearestCubes[i].distance,
+						index    : that.nearestCubes[i].index   
+					});
 				}
 			}
-		}
+
+			socket.emit('newCube', data);
+
+/*			newBoxMesh.position.set(mouseIndicator.position.x, mouseIndicator.position.y, mouseIndicator.position.z);
+			newBoxMesh.castShadow    = true;
+			newBoxMesh.receiveShadow = true;
+			that.objects.showMe.push({
+				mesh : newBoxMesh
+			});*/
+
+			/*for (var i = 0; i < that.nearestCubes.length; i++) {
+				if (that.nearestCubes[i].distance) {
+					createBridge(that.nearestCubes[i].index, that.objects.showMe.length - 1, that.nearestCubes[i].distance);
+					that.nearestCubes[i].line.remove();
+				}
+			}*/
+
+			
+		// }
 	};
 
 
 	this.update = function (step) {
-		this.world.step(step);
-
-		_.each(this.objects.springs, function (spring) {
-			spring.applyForce();
-		});
-
 		this.handleKeys();
 
 		var objectsToCheck = [];
@@ -401,25 +332,25 @@ var Game = function () {
 
 /*  REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES  */
 		for (var i = 0; i < this.objects.lines.length; i++) {
-			this.objects.lines[i].mesh.geometry.vertices[0].set(this.objects.cubes[this.objects.lines[i].box1].mesh.position);
-			this.objects.lines[i].mesh.geometry.vertices[1].set(this.objects.cubes[this.objects.lines[i].box2].mesh.position);
+			this.objects.lines[i].mesh.geometry.vertices[0].set(this.objects.showMe[this.objects.lines[i].box1].mesh.position);
+			this.objects.lines[i].mesh.geometry.vertices[1].set(this.objects.showMe[this.objects.lines[i].box2].mesh.position);
 			this.objects.lines[i].mesh.geometry.verticesNeedUpdate = true;
 		}
 /* / REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES */
 
-		for (var i = 0; i < this.objects.cubes.length; i++) {
+		for (var i = 0; i < this.objects.showMe.length; i++) {
 /*  UPDATE CUBE POSITIONS  */
-			this.objects.cubes[i].mesh.position.copy(this.objects.cubes[i].body.position);
-			this.objects.cubes[i].mesh.quaternion.copy(this.objects.cubes[i].body.quaternion);
+			// this.objects.cubes[i].mesh.position.copy(this.objects.cubes[i].body.position);
+			// this.objects.cubes[i].mesh.quaternion.copy(this.objects.cubes[i].body.quaternion);
 /* / UPDATE CUBE POSITIONS */
 
 /*  LOOKING FOR THE 2 NEAREST BOXES  */
-			var dx = this.objects.cubes[i].mesh.position.x - mouseIndicator.position.x,
-				dy = this.objects.cubes[i].mesh.position.y - mouseIndicator.position.y,
-				dz = this.objects.cubes[i].mesh.position.z - mouseIndicator.position.z;
+			var dx = this.objects.showMe[i].mesh.position.x - mouseIndicator.position.x,
+				dy = this.objects.showMe[i].mesh.position.y - mouseIndicator.position.y,
+				dz = this.objects.showMe[i].mesh.position.z - mouseIndicator.position.z;
 
 			distances.push(Math.sqrt(dx * dx + dy * dy + dz * dz));
-			this.objects.cubes[i].mesh.material.transparent = false;
+			this.objects.showMe[i].mesh.material.transparent = false;
 		}
 
 		var distancesMin,
@@ -438,12 +369,12 @@ var Game = function () {
 					color : 0x66ffff
 				});
 				geometry = new THREE.Geometry();
-				geometry.vertices.push(this.objects.cubes[distancesMinIndex].mesh.position);
+				geometry.vertices.push(this.objects.showMe[distancesMinIndex].mesh.position);
 				geometry.vertices.push(mouseIndicator.position);
 				line = new THREE.Line(geometry, material);
 
 				this.nearestCubes[i].line.visible = true;
-				this.nearestCubes[i].line.geometry.vertices[0].set(this.objects.cubes[distancesMinIndex].mesh.position.x, this.objects.cubes[distancesMinIndex].mesh.position.y, this.objects.cubes[distancesMinIndex].mesh.position.z);
+				this.nearestCubes[i].line.geometry.vertices[0].set(this.objects.showMe[distancesMinIndex].mesh.position.x, this.objects.showMe[distancesMinIndex].mesh.position.y, this.objects.showMe[distancesMinIndex].mesh.position.z);
 				this.nearestCubes[i].line.geometry.vertices[1].set(mouseIndicator.position.x, mouseIndicator.position.y, mouseIndicator.position.z);
 				this.nearestCubes[i].line.geometry.verticesNeedUpdate = true;
 
@@ -505,7 +436,22 @@ var Game = function () {
 var game = new Game();
 game.init();
 
-var socket = io.connect('http://localhost:8001');
-socket.on('cannon.solver', function (data) {
-	console.log(data);
+var socket = io.connect('http://localhost:8002');
+
+socket.on('cannon', function (data) {
+	console.log(game.objects.showMe.length, data.cubes.length);
+	for (var i = 0; i < data.cubes.length; i++) {
+		if (!game.objects.showMe[i]) {
+			var showMeMaterial = new THREE.MeshLambertMaterial({ color : 0xffffff });
+			var showMeGeometry = new THREE.BoxGeometry(1, 1, 1);
+			var showMe         = new THREE.Mesh(showMeGeometry, showMeMaterial);
+
+			game.addToGameScene(showMe);
+			game.objects.showMe.push({
+				mesh : showMe
+			});
+		}
+		game.objects.showMe[i].mesh.position.copy(data.cubes[i]);
+	}
 });
+
