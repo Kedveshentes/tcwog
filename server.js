@@ -10,6 +10,7 @@ var fs      = require("fs");
 });*/
 
 
+
 var express = require('express');
 var app = express();
 app.use('/', express.static(__dirname + '/'));
@@ -26,6 +27,8 @@ http.listen(process.env.PORT || 3000, function(){
 http.listen(8010);
 
 
+
+
 function handler (req, res) {
   fs.readFile(__dirname + '/index.html',
   function (err, data) {
@@ -38,6 +41,8 @@ function handler (req, res) {
     res.end(data);
   });
 }
+
+
 
 
 

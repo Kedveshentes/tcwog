@@ -404,7 +404,7 @@ var Game = function () {
 
 var game = new Game();
 
-var socket = io('https://localhost:8010');
+var socket = io(location.origin);
 
 socket.on('cannon', function (data) {
 	for (var i = 0; i < data.cubes.length; i++) {
