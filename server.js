@@ -39,7 +39,6 @@ var Game = function () {
 	var that = this;
 
 	var solver;
-	var world;
 	var groundMaterial;
 	var groundShape;
 	var groundBody;
@@ -59,25 +58,25 @@ var Game = function () {
 
 	this.initGameField = function () {
 		solver = new CANNON.GSSolver();
-		world  = new CANNON.World();
-		world.gravity.set(0, -20, 0);
-		world.quatNormalizeSkip = 0;
-		world.quatNormalizeFast = false;
+		this.world  = new CANNON.World();
+		this.world.gravity.set(0, -20, 0);
+		this.world.quatNormalizeSkip = 0;
+		this.world.quatNormalizeFast = false;
 
-		world.defaultContactMaterial.contactEquationStiffness = 1e9;
-		world.defaultContactMaterial.contactEquationRelaxation = 4;
+		this.world.defaultContactMaterial.contactEquationStiffness = 1e9;
+		this.world.defaultContactMaterial.contactEquationRelaxation = 4;
 
 		solver.iterations = 7;
 		solver.tolerance = 0.1;
 		split = true;
 		if (split) {
-			world.solver = new CANNON.SplitSolver(solver);
+			this.world.solver = new CANNON.SplitSolver(solver);
 		}
 		else {
-			world.solver = solver;
+			this.world.solver = solver;
 		}
 
-		world.broadphase = new CANNON.NaiveBroadphase();
+		this.world.broadphase = new CANNON.NaiveBroadphase();
 
 		groundMaterial = new CANNON.Material();
 
@@ -85,7 +84,7 @@ var Game = function () {
 		groundBody     = new CANNON.Body({ mass : 0 , material : groundMaterial });
 		groundBody.addShape(groundShape);
 		groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), - Math.PI / 2);
-		world.add(groundBody);
+		this.world.add(groundBody);
 
 
 		planeMaterial = new CANNON.Material();
@@ -94,16 +93,16 @@ var Game = function () {
 		planeRear     = new CANNON.Body({ mass: 0 , material : planeMaterial });
 		planeRear.addShape(planeShape);
 		planeRear.position.set(0, 0, -0.5);
-		world.add(planeRear);
+		this.world.add(planeRear);
 
 		planeFront    = new CANNON.Body({ mass: 0 , material : planeMaterial });
 		planeFront.addShape(planeShape);
 		planeFront.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), - Math.PI);
 		planeFront.position.set(0, 0, 0.55);
-		world.add(planeFront);
+		this.world.add(planeFront);
 
 		/*this.solver         = solver;
-		this.world          = world;
+		this.this.world          = this.world;
 		this.groundMaterial = groundMaterial;
 		this.groundShape    = groundShape;
 		this.groundBody     = groundBody;
@@ -112,32 +111,32 @@ var Game = function () {
 		this.planeRear      = planeRear;
 		this.planeFront     = planeFront;*/
 
-
+		this.frame();
+	};
+	this.initObjects = function () {
 		halfExtents       = new CANNON.Vec3(0.5, 0.5, 0.5);
 		boxShape          = new CANNON.Box(halfExtents);
 		boxCannonMaterial = new CANNON.Material();
 		
 		var boxCannonMaterial_ground = new CANNON.ContactMaterial(groundMaterial, boxCannonMaterial, { friction: 1, restitution: 0 });
-		world.addContactMaterial(boxCannonMaterial_ground);
+		this.world.addContactMaterial(boxCannonMaterial_ground);
 		
 		var boxCannonMaterial_boxCannonMaterial = new CANNON.ContactMaterial(boxCannonMaterial, boxCannonMaterial, { friction: 0.9, restitution: 0.5 });
-		world.addContactMaterial(boxCannonMaterial_boxCannonMaterial);
+		this.world.addContactMaterial(boxCannonMaterial_boxCannonMaterial);
 		
 		var boxCannonMaterial_planeMaterial = new CANNON.ContactMaterial(boxCannonMaterial, planeMaterial, { friction: 0, restitution: 0 });
-		world.addContactMaterial(boxCannonMaterial_planeMaterial);
+		this.world.addContactMaterial(boxCannonMaterial_planeMaterial);
 
 
-		this.frame();
-	};
-	this.initObjects = function () {
 		for (var i = 0; i < 3; i++) {
 			var x = 0;
 			var y = i * 3;
 			var z = 0;
 
+
 			boxBody = new CANNON.Body({ mass : 3, material : boxCannonMaterial });
 			boxBody.addShape(boxShape);
-			world.add(boxBody);
+			this.world.add(boxBody);
 			boxBody.position.set(x, y, z);
 			this.objects.cubes.push({
 				body : boxBody
@@ -154,19 +153,17 @@ var Game = function () {
 	};
 
 	this.addToGameWorld = function (addThis) {
-		boxCannonMaterial = new CANNON.Material();
-		boxShape = new CANNON.Box(halfExtents);
 		boxBody  = new CANNON.Body({ mass : 3, material : boxCannonMaterial });
 		boxBody.addShape(boxShape);
-		boxBody.position = addThis.position;
+		boxBody.position.set(addThis.position.x, addThis.position.y, addThis.position.z);
 		this.objects.cubes.push({
 			body : boxBody
 		});
-		world.add(boxBody);
+		this.world.add(boxBody);
 
-		/*for (var i = 0; i < addThis.nearestCubes.length; i++) {
+		for (var i = 0; i < addThis.nearestCubes.length; i++) {
 			createBridge(addThis.nearestCubes[i].index, this.objects.cubes.length - 1, addThis.nearestCubes[i].distance);
-		}*/
+		}
 	};
 
 
@@ -207,7 +204,7 @@ var Game = function () {
 
 
 	this.update = function () {
-		world.step(step);
+		this.world.step(step);
 
 		_.each(this.objects.springs, function (spring) {
 			spring.applyForce();
@@ -236,11 +233,14 @@ function asd (socket) {
 	var send = {
 		cubes : []
 	};
-	for (var i = game.objects.cubes.length - 1; i >= 0; i--) {
+	for (var i = 0; i < game.objects.cubes.length; i++) {
 		send.cubes.push({
-			x : Math.round(game.objects.cubes[i].body.position.x * 100000) / 100000,
-			y : Math.round(game.objects.cubes[i].body.position.y * 100000) / 100000,
-			z : Math.round(game.objects.cubes[i].body.position.z * 100000) / 100000
+			position : {
+				x : Math.round(game.objects.cubes[i].body.position.x * 100000) / 100000,
+				y : Math.round(game.objects.cubes[i].body.position.y * 100000) / 100000,
+				z : Math.round(game.objects.cubes[i].body.position.z * 100000) / 100000
+			},
+			q : game.objects.cubes[i].body.quaternion
 		});
 	}
 	socket.emit('cannon', send);

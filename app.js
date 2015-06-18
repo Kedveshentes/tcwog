@@ -1,12 +1,16 @@
+
 var Game = function () {
 	this.utils = {
-		timestamp : function () {
+		timestamp   : function () {
 			return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
 		},
-		springs   : {
+		springs     : {
 			stiffness : 700,
 			damping   : 30,
 			maxLength : 7
+		},
+		randomColor : function () {
+			return '0x' + Math.floor(Math.random() * 16777215).toString(16);
 		}
 	};
 	this.objects = {
@@ -17,6 +21,7 @@ var Game = function () {
 		obstacles : []
 	};
 	this.nearestCubes;
+	this.color = this.utils.randomColor();
 
 	var that        = this,
 		dt          = 0,
@@ -439,10 +444,9 @@ game.init();
 var socket = io.connect('http://localhost:8002');
 
 socket.on('cannon', function (data) {
-	console.log(game.objects.showMe.length, data.cubes.length);
 	for (var i = 0; i < data.cubes.length; i++) {
 		if (!game.objects.showMe[i]) {
-			var showMeMaterial = new THREE.MeshLambertMaterial({ color : 0xffffff });
+			var showMeMaterial = new THREE.MeshLambertMaterial({ color : 0x2255ff });
 			var showMeGeometry = new THREE.BoxGeometry(1, 1, 1);
 			var showMe         = new THREE.Mesh(showMeGeometry, showMeMaterial);
 
@@ -451,7 +455,8 @@ socket.on('cannon', function (data) {
 				mesh : showMe
 			});
 		}
-		game.objects.showMe[i].mesh.position.copy(data.cubes[i]);
+		game.objects.showMe[i].mesh.position.copy(data.cubes[i].position);
+		game.objects.showMe[i].mesh.quaternion.copy(data.cubes[i].q);
 	}
 });
 
