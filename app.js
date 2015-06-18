@@ -13,7 +13,7 @@ var Game = function () {
 
 	var that        = this,
 		dt          = 0,
-		step        = 1/30,
+		step        = 1/60,
 		last        = this.utils.timestamp(),
 		fpsmeter    = new FPSMeter(document.getElementById('fpsmeter'), { decimals: 0, graph: true, theme: 'dark', left: '5px' }),
 		pressedKeys = [],
@@ -144,7 +144,7 @@ var Game = function () {
 		obstacle         = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
 		obstacle.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
 
-		obstacle.position.y = 14;
+		obstacle.position.y = 24;
 		scene.add(obstacle);
 
 		var ambientLight;
@@ -167,19 +167,42 @@ var Game = function () {
 	};
 
 
-	this.initObjects = function () {
-		this.objects = {
+	this.initObjects = function (data) {
+		this.mySocketId = data.socketId;
+		this.color      = data.color;
+		this.objects    = {
 			mouseIndicators : {},
 			showMe          : [],
-			cubes           : [],
 			lines           : [],
 			springs         : [],
 			obstacles       : []
 		};
 
+		this.boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+
+		for (var i = 0; i < data.cubes.length; i++) {
+			var showMeMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(data.cubes[i].color) || 0xffffff }),
+/*				showMeGeometry = new THREE.BoxGeometry(1, 1, 1),*/
+				showMe         = new THREE.Mesh(this.boxGeometry, showMeMaterial);
+
+			this.objects.showMe.push({
+				mesh : showMe
+			});
+
+			this.objects.showMe[i].mesh.position.copy(data.cubes[i].position);
+			this.objects.showMe[i].mesh.quaternion.copy(data.cubes[i].q);
+
+			scene.add(this.objects.showMe[i].mesh);
+		}
+
+		for (var i = 0; i < data.lines.length; i++) {
+			this.createBridge(data.lines[i].index1, data.lines[i].index2);
+		}
+
+
 		var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : 0xffdddd }),
-			mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1),
-			mouseIndicator         = new THREE.Mesh(mouseIndicatorGeometry, mouseIndicatorMaterial);
+/*			mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1),*/
+			mouseIndicator         = new THREE.Mesh(this.boxGeometry, mouseIndicatorMaterial);
 
 		game.objects.mouseIndicators[this.mySocketId] = mouseIndicator;
 		scene.add(game.objects.mouseIndicators[this.mySocketId]);
@@ -375,9 +398,9 @@ var Game = function () {
 		requestAnimationFrame(that.frame);
 	};
 
-	this.init = function () {
+	this.init = function (data) {
 		this.initGameField();
-		this.initObjects();
+		this.initObjects(data);
 		raycaster = new THREE.Raycaster();
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		document.body.appendChild(renderer.domElement);
@@ -403,26 +426,19 @@ var game = new Game();
 
 var socket = io(location.origin);
 
-socket.on('cannon', function (data) {
+socket.on('refresh', function (data) {
 	for (var i = 0; i < data.cubes.length; i++) {
-		if (!game.objects.showMe[i]) {
-			var showMeMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(data.cubes[i].color) || 0xffffff }),
-				showMeGeometry = new THREE.BoxGeometry(1, 1, 1),
-				showMe         = new THREE.Mesh(showMeGeometry, showMeMaterial);
+		var showMeMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(data.cubes[i].color) || 0xffffff }),
+/*			showMeGeometry = new THREE.BoxGeometry(1, 1, 1),*/
+			showMe         = new THREE.Mesh(game.boxGeometry, showMeMaterial);
 
-			game.addToGameScene(showMe);
-			game.objects.showMe.push({
-				mesh : showMe
-			});
-		}
+		game.addToGameScene(showMe);
+		game.objects.showMe.push({
+			mesh : showMe
+		});
+
 		game.objects.showMe[i].mesh.position.copy(data.cubes[i].position);
 		game.objects.showMe[i].mesh.quaternion.copy(data.cubes[i].q);
-	}
-
-	for (var i = 0; i < data.lines.length; i++) {
-		if (!game.objects.lines[i]) {
-			game.createBridge(data.lines[i].index1, data.lines[i].index2);
-		}
 	}
 });
 
@@ -440,8 +456,8 @@ socket.on('mouseMoved', function (mouseIndicators) {
 			game.objects.mouseIndicators[property].material.opacity = 0.5;
 		} else {
 			var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(mouseIndicators[property].color) , opacity : 0.5 , transparent : true }),
-				mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1),
-				mouseIndicator         = new THREE.Mesh(mouseIndicatorGeometry, mouseIndicatorMaterial);
+/*				mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1),*/
+				mouseIndicator         = new THREE.Mesh(game.boxGeometry, mouseIndicatorMaterial);
 
 			mouseIndicator.position.set(mouseIndicators[property].position.x, mouseIndicators[property].position.y, mouseIndicators[property].position.z);
 
@@ -452,9 +468,8 @@ socket.on('mouseMoved', function (mouseIndicators) {
 	}
 });
 
-socket.on('mySocketId', function (socketId) {
-	game.mySocketId = socketId;
-	game.init();
+socket.on('initialize', function (data) {
+	game.init(data);
 });
 
 socket.on('reset', function () {

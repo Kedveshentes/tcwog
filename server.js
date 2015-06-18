@@ -57,7 +57,6 @@ var Game = function () {
 		if (previousTick + (1000 / frameRate) < now) {
 			previousTick = now;
 			that.update();
-			console.log(previousTick);
 		}
 		if (now - previousTick < (1000 / frameRate) - 16) {
 			setTimeout(that.frame);
@@ -246,9 +245,33 @@ game.init();
 
 function asd (socket) {
 	var send = {
+		cubes : []
+	};
+	for (var i = 0; i < game.objects.cubes.length; i++) {
+		send.cubes.push({
+			position : {
+				x : Math.round(game.objects.cubes[i].body.position.x * 100000) / 100000,
+				y : Math.round(game.objects.cubes[i].body.position.y * 100000) / 100000,
+				z : Math.round(game.objects.cubes[i].body.position.z * 100000) / 100000
+			},
+			q        : game.objects.cubes[i].body.quaternion
+		});
+	}
+	socket.emit('refresh', send);
+}
+
+
+
+io.on('connection', function (socket) {
+	socket.color = 'rgb(' + Math.floor(Math.random()*255) + ',' + Math.floor(Math.random()*255) + ',' + Math.floor(Math.random()*255) + ')';
+
+	var send = {
+		id    : socket.id,
+		color : socket.color,
 		cubes : [],
 		lines : []
 	};
+
 	for (var i = 0; i < game.objects.cubes.length; i++) {
 		send.cubes.push({
 			position : {
@@ -259,23 +282,18 @@ function asd (socket) {
 			q        : game.objects.cubes[i].body.quaternion,
 			color    : game.objects.cubes[i].body.color
 		});
-		send.lines           = game.objects.lines;
+		send.lines = game.objects.lines;
 	}
-	socket.emit('cannon', send);
-}
+
+	socket.emit('initialize', send);
 
 
-
-io.on('connection', function (socket) {
-	socket.emit('mySocketId', socket.id);
-
-	socket.color = 'rgb(' + Math.floor(Math.random()*255) + ',' + Math.floor(Math.random()*255) + ',' + Math.floor(Math.random()*255) + ')';
 	setInterval(function () {
 		asd(socket);
 	}, 16);
 
 	socket.on('newCube', function (newCube) {
-		game.addToGameWorld(newCube, this.color);
+		game.addToGameWorld(newCube, socket.color);
 	});
 	socket.on('disconnect', function () {
 		delete game.objects.mouseIndicators[socket.id];
@@ -286,6 +304,7 @@ io.on('connection', function (socket) {
 
 	socket.on('reset', function () {
 		game.reset();
+		console.log('asd');
 		io.sockets.emit('reset');
 	});
 
