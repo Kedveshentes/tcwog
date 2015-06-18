@@ -5,7 +5,7 @@ var express = require('express'),
 	io      = require('socket.io').listen(server),
 	app     = express();
 
-server.listen(8002);
+server.listen(8004);
 
 var Game = function () {
 	this.utils = {
