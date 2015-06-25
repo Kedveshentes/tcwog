@@ -97,8 +97,8 @@ var Game = function () {
 		this.world.add(boxBody);
 
 		for (var i = 0; i < addThis.nearestCubes.length; i++) {
-/*			createSpring(addThis.nearestCubes[i].index, this.objects.cubes.length - 1, addThis.nearestCubes[i].distance);
-*/		}
+			createSpring(addThis.nearestCubes[i].index, this.objects.cubes.length - 1, addThis.nearestCubes[i].distance);
+		}
 	};
 
 	

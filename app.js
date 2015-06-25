@@ -103,7 +103,7 @@ var Game = function () {
 		camera.translateY(20);
 		camera.translateZ(30);
 
-		renderer = new THREE.WebGLRenderer();
+		renderer = new THREE.WebGLRenderer({ antialias : true });
 		renderer.shadowMapType = THREE.PCFSoftShadowMap;
 		renderer.shadowMapEnabled = true;
 		renderer.shadowMapSoft = true;
@@ -188,6 +188,8 @@ var Game = function () {
 /*				showMeGeometry = new THREE.BoxGeometry(1, 1, 1),*/
 				showMe         = new THREE.Mesh(this.boxGeometry, showMeMaterial);
 
+			showMe.castShadow = true;
+
 			this.objects.showMe.push({
 				mesh : showMe
 			});
@@ -206,6 +208,8 @@ var Game = function () {
 		var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(this.color) }),
 /*			mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1),*/
 			mouseIndicator         = new THREE.Mesh(this.boxGeometry, mouseIndicatorMaterial);
+
+		mouseIndicator.castShadow = true;
 
 		game.objects.mouseIndicators[this.mySocketId] = mouseIndicator;
 		scene.add(game.objects.mouseIndicators[this.mySocketId]);
@@ -443,6 +447,9 @@ socket.on('addCube', function (cube) {
 		/*showMeGeometry = new THREE.BoxGeometry(1, 1, 1),*/
 		showMe         = new THREE.Mesh(game.boxGeometry, showMeMaterial);
 
+
+	showMe.castShadow = true;
+
 	showMe.position.set(cube.position.x, cube.position.y, cube.position.z);
 	game.addToGameScene(showMe);
 
@@ -465,13 +472,12 @@ socket.on('mouseMoved', function (otherPlayersMouseAndId) {
 
 	if (game.objects.mouseIndicators.hasOwnProperty(id)) {
 		game.objects.mouseIndicators[id].position.set(otherMouse.position.x, otherMouse.position.y, otherMouse.position.z);
-		game.objects.mouseIndicators[id].material.color = new THREE.Color(otherMouse.color);
-		game.objects.mouseIndicators[id].material.transparent = true;
-		game.objects.mouseIndicators[id].material.opacity = 0.5;
 	} else {
 		var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(otherMouse.color) , opacity : 0.5 , transparent : true }),
 /*				mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1),*/
 			mouseIndicator         = new THREE.Mesh(game.boxGeometry, mouseIndicatorMaterial);
+
+		mouseIndicator.castShadow = true;
 
 		mouseIndicator.position.set(
 			otherMouse.position.x,
