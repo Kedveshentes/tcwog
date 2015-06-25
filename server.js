@@ -28,7 +28,6 @@ function handler (req, res) {
 }
 
 
-
 var Game = function () {
 	this.utils = {
 		timestamp : function () {
@@ -40,9 +39,6 @@ var Game = function () {
 			maxLength : 7
 		}
 	};
-
-
-
 
 
 	var previousTick = this.utils.timestamp(),
@@ -66,11 +62,6 @@ var Game = function () {
 		}
 	};
 
-
-
-
-
-
 	this.update = function () {
 		this.world.step(step);
 
@@ -91,7 +82,13 @@ var Game = function () {
 
 	this.addToGameWorld = function (addThis, color) {
 		boxBody  = new CANNON.Body({ mass : 3, material : boxCannonMaterial });
+
+        // var q = new CANNON.Quaternion();
+        // q.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2);
+        // boxBody.addShape(boxShape, new CANNON.Vec3(), q);
 		boxBody.addShape(boxShape);
+
+
 		boxBody.position.set(addThis.position.x, addThis.position.y, addThis.position.z);
 		boxBody.color = color;
 		this.objects.cubes.push({
@@ -100,8 +97,8 @@ var Game = function () {
 		this.world.add(boxBody);
 
 		for (var i = 0; i < addThis.nearestCubes.length; i++) {
-			createSpring(addThis.nearestCubes[i].index, this.objects.cubes.length - 1, addThis.nearestCubes[i].distance);
-		}
+/*			createSpring(addThis.nearestCubes[i].index, this.objects.cubes.length - 1, addThis.nearestCubes[i].distance);
+*/		}
 	};
 
 	
@@ -193,7 +190,12 @@ var Game = function () {
 		};
 
 		halfExtents       = new CANNON.Vec3(0.5, 0.5, 0.5);
+
+
+        // boxShape     = new CANNON.Cylinder(0.5, 0.5, 1, 4);
 		boxShape          = new CANNON.Box(halfExtents);
+
+
 		boxCannonMaterial = new CANNON.Material();
 		
 		var boxCannonMaterial_ground = new CANNON.ContactMaterial(groundMaterial, boxCannonMaterial, { friction: 1, restitution: 0 });
@@ -240,9 +242,9 @@ function asd (socket) {
 	for (var i = 0; i < game.objects.cubes.length; i++) {
 		send.cubes.push({
 			position : {
-				x : Math.round(game.objects.cubes[i].body.position.x * 100000) / 100000,
-				y : Math.round(game.objects.cubes[i].body.position.y * 100000) / 100000,
-				z : Math.round(game.objects.cubes[i].body.position.z * 100000) / 100000
+				x : Math.round(game.objects.cubes[i].body.position.x * 1000) / 1000,
+				y : Math.round(game.objects.cubes[i].body.position.y * 1000) / 1000/*,
+				z : Math.round(game.objects.cubes[i].body.position.z * 1000) / 1000*/
 			},
 			q        : game.objects.cubes[i].body.quaternion
 		});
@@ -265,9 +267,9 @@ io.on('connection', function (socket) {
 	for (var i = 0; i < game.objects.cubes.length; i++) {
 		send.cubes.push({
 			position : {
-				x : Math.round(game.objects.cubes[i].body.position.x * 100000) / 100000,
-				y : Math.round(game.objects.cubes[i].body.position.y * 100000) / 100000,
-				z : Math.round(game.objects.cubes[i].body.position.z * 100000) / 100000
+				x : Math.round(game.objects.cubes[i].body.position.x * 1000) / 1000,
+				y : Math.round(game.objects.cubes[i].body.position.y * 1000) / 1000/*,
+				z : Math.round(game.objects.cubes[i].body.position.z * 1000) / 1000*/
 			},
 			q        : game.objects.cubes[i].body.quaternion,
 			color    : game.objects.cubes[i].body.color
@@ -280,7 +282,7 @@ io.on('connection', function (socket) {
 
 	setInterval(function () {
 		asd(socket);
-	}, 16);
+	}, 33);
 
 	socket.on('newCube', function (newCube) {
 		game.addToGameWorld(newCube, socket.color);

@@ -1,1 +1,494 @@
-var Game=function(){this.utils={timestamp:function(){return window.performance&&window.performance.now?window.performance.now():(new Date).getTime()},springs:{stiffness:700,damping:30,maxLength:7}};var e=this,t=0,s=1/60,o=this.utils.timestamp(),i=new FPSMeter(document.getElementById("fpsmeter"),{decimals:0,graph:!0,theme:"dark",left:"5px"}),n=[],a=new THREE.Vector2;this.addToGameScene=function(e){r.add(e)},this.removeFromGameScene=function(e){r.remove(e)},this.createBridge=function(t,s){var o,i,n;o=new THREE.LineBasicMaterial({color:10092543}),i=new THREE.Geometry,i.vertices.push(e.objects.showMe[t].mesh.position),i.vertices.push(e.objects.showMe[s].mesh.position),n=new THREE.Line(i,o),e.objects.lines.push({material:o,geometry:i,mesh:n,box1:t,box2:s}),r.add(n)};var r,c,h,m,d,u,l,w,p,b,E,g,M,y,v,f;this.initGameField=function(){r=new THREE.Scene,r.fog=new THREE.Fog(0,0,500),c=new THREE.PerspectiveCamera(90,window.innerWidth/window.innerHeight,.1,1e3),c.translateX(0),c.translateY(20),c.translateZ(30),h=new THREE.WebGLRenderer,h.shadowMapType=THREE.PCFSoftShadowMap,h.shadowMapEnabled=!0,h.shadowMapSoft=!0,h.setSize(window.innerWidth,window.innerHeight),h.setClearColor(r.fog.color,1),w=new THREE.PlaneBufferGeometry(70,6,50,50),w.applyMatrix((new THREE.Matrix4).makeRotationX(-Math.PI/2)),p=new THREE.MeshLambertMaterial({color:11184810}),b=new THREE.Mesh(w,p),b.position.z=3,b.castShadow=!0,b.receiveShadow=!0,r.add(b),E=new THREE.PlaneBufferGeometry(70,40,50,50),g=new THREE.MeshLambertMaterial({color:13421823}),M=new THREE.Mesh(E,g),M.position.y=20,M.position.z=-.1,M.castShadow=!0,M.receiveShadow=!0,r.add(M),y=new THREE.CylinderGeometry(3,3,.8,32),v=new THREE.MeshLambertMaterial({color:16720469,transparent:!0,opacity:.5}),f=new THREE.Mesh(y,v),f.applyMatrix((new THREE.Matrix4).makeRotationX(-Math.PI/2)),f.position.y=24,r.add(f);var e;e=new THREE.AmbientLight(2236962),r.add(e),m=new THREE.SpotLight(16777215),m.position.set(-15,60,14),m.shadowMapWidth=1024,m.shadowMapHeight=1024,m.shadowCameraNear=10,m.shadowCameraFov=50,m.shadowDarkness=.95,m.intensity=1.6,m.castShadow=!0,r.add(m),d=new THREE.Raycaster},this.initObjects=function(e){this.mySocketId=e.id,this.color=e.color,this.objects={mouseIndicators:{},showMe:[],lines:[],springs:[],obstacles:[]},this.boxGeometry=new THREE.BoxGeometry(1,1,1);for(var t=0;t<e.cubes.length;t++){var s=new THREE.MeshLambertMaterial({color:new THREE.Color(e.cubes[t].color)||16777215}),o=new THREE.Mesh(this.boxGeometry,s);this.objects.showMe.push({mesh:o}),this.objects.showMe[t].mesh.position.copy(e.cubes[t].position),this.objects.showMe[t].mesh.quaternion.copy(e.cubes[t].q),r.add(this.objects.showMe[t].mesh)}for(var t=0;t<e.lines.length;t++)this.createBridge(e.lines[t].index1,e.lines[t].index2);var i=new THREE.MeshLambertMaterial({color:new THREE.Color(this.color)}),n=new THREE.Mesh(this.boxGeometry,i);game.objects.mouseIndicators[this.mySocketId]=n,r.add(game.objects.mouseIndicators[this.mySocketId]),u=!1,l=[],this.nearestCubes=[];for(var t=0;2>=t;t++){var a,c,h;a=new THREE.LineBasicMaterial({color:6750207}),c=new THREE.Geometry,c.vertices.push(new THREE.Vector3(10,0,0)),c.vertices.push(new THREE.Vector3(-10,0,10)),h=new THREE.Line(c,a),this.nearestCubes.push({distance:void 0,index:void 0,line:h}),r.add(this.nearestCubes[t].line)}},this.handleKeyUp=function(e){n[e.keyCode]=!1},this.handleKeyDown=function(e){n[e.keyCode]=!0},this.handleKeys=function(){n[32]&&socket.emit("reset")},this.handleMouseMove=function(e){e.preventDefault(),a.x=e.clientX/window.innerWidth*2-1,a.y=2*-(e.clientY/window.innerHeight)+1},this.handleMouseClick=function(t){if(u&&e.nearestCubes[0].distance<=e.utils.springs.maxLength&&e.nearestCubes[1].distance<=e.utils.springs.maxLength){var s={};s.position=e.objects.mouseIndicators[e.mySocketId].position,s.nearestCubes=[];for(var o=0;o<e.nearestCubes.length;o++)void 0!=e.nearestCubes[o].index&&s.nearestCubes.push({distance:e.nearestCubes[o].distance,index:e.nearestCubes[o].index});socket.emit("newCube",s)}},this.update=function(e){this.handleKeys();var t=[];t.push(M),t.push(f),d.setFromCamera(a,c);var s=d.intersectObjects(t);0!=s.length&&s.length<2?(u=!0,socket.emit("mouseIndicatorMove",{x:s[0].point.x,y:s[0].point.y,z:s[0].point.z}),this.objects.mouseIndicators[this.mySocketId].position.set(s[0].point.x,s[0].point.y,s[0].point.z)):u=!1,this.objects.mouseIndicators[this.mySocketId].visible=u?!0:!1;for(var o=0;o<this.objects.lines.length;o++)this.objects.lines[o].mesh.geometry.verticesNeedUpdate=!0;for(var o=0;o<this.objects.showMe.length;o++){var i=this.objects.showMe[o].mesh.position.x-this.objects.mouseIndicators[this.mySocketId].position.x,n=this.objects.showMe[o].mesh.position.y-this.objects.mouseIndicators[this.mySocketId].position.y,r=this.objects.showMe[o].mesh.position.z-this.objects.mouseIndicators[this.mySocketId].position.z;l.push(Math.sqrt(i*i+n*n+r*r)),this.objects.showMe[o].mesh.material.transparent=!1}for(var h,m,o=0;2>=o;o++){if(h=_.min(l),m=_.indexOf(l,h),u&&h<=this.utils.springs.maxLength){var w,p,b;w=new THREE.LineBasicMaterial({color:6750207}),p=new THREE.Geometry,p.vertices.push(this.objects.showMe[m].mesh.position),p.vertices.push(game.objects.mouseIndicators[this.mySocketId].position),b=new THREE.Line(p,w),this.nearestCubes[o].line.visible=!0,this.nearestCubes[o].line.geometry.vertices[0].set(this.objects.showMe[m].mesh.position.x,this.objects.showMe[m].mesh.position.y,this.objects.showMe[m].mesh.position.z),this.nearestCubes[o].line.geometry.vertices[1].set(game.objects.mouseIndicators[this.mySocketId].position.x,game.objects.mouseIndicators[this.mySocketId].position.y,game.objects.mouseIndicators[this.mySocketId].position.z),this.nearestCubes[o].line.geometry.verticesNeedUpdate=!0,this.nearestCubes[o].distance=h,this.nearestCubes[o].index=m}else this.nearestCubes[o].line.visible=!1,this.nearestCubes[o].distance=void 0,this.nearestCubes[o].index=void 0;l[m]=1/0}l=[]},this.render=function(){h.render(r,c)},this.frame=function(){for(i.tickStart(),now=e.utils.timestamp(),t+=Math.min(1,(now-o)/1e3);t>s;)t-=s,e.update(s),i.tick();e.render(t),o=now,requestAnimationFrame(e.frame)},this.init=function(e){this.initGameField(),this.initObjects(e),d=new THREE.Raycaster,h.setSize(window.innerWidth,window.innerHeight),document.body.appendChild(h.domElement),document.onkeyup=this.handleKeyUp,document.onkeydown=this.handleKeyDown,document.onmousemove=this.handleMouseMove,document.onclick=this.handleMouseClick,this.frame()},this.reset=function(){for(var e=3;e<this.objects.showMe.length;e++)this.removeFromGameScene(this.objects.showMe[e].mesh);for(var e=3;e<this.objects.lines.length;e++)this.removeFromGameScene(this.objects.lines[e].mesh)}},game=new Game,socket=io(location.origin);socket.on("refresh",function(e){for(var t=0;t<game.objects.showMe.length;t++)game.objects.showMe[t].mesh.position.copy(e.cubes[t].position),game.objects.showMe[t].mesh.quaternion.copy(e.cubes[t].q)}),socket.on("addCube",function(e){var t=new THREE.MeshLambertMaterial({color:new THREE.Color(e.color)||16777215}),s=new THREE.Mesh(game.boxGeometry,t);s.position.set(e.position.x,e.position.y,e.position.z),game.addToGameScene(s),game.objects.showMe.push({mesh:s});for(var o=0;o<e.nearestCubes.length;o++)game.createBridge(e.nearestCubes[o].index,game.objects.showMe.length-1)}),socket.on("deleteMouseIndicator",function(e){game.removeFromGameScene(game.objects.mouseIndicators[e]),delete game.objects.mouseIndicators[e]}),socket.on("mouseMoved",function(e){var t=e.mouseIndicator,s=e.id;if(game.objects.mouseIndicators.hasOwnProperty(s))game.objects.mouseIndicators[s].position.set(t.position.x,t.position.y,t.position.z),game.objects.mouseIndicators[s].material.color=new THREE.Color(t.color),game.objects.mouseIndicators[s].material.transparent=!0,game.objects.mouseIndicators[s].material.opacity=.5;else{var o=new THREE.MeshLambertMaterial({color:new THREE.Color(t.color),opacity:.5,transparent:!0}),i=new THREE.Mesh(game.boxGeometry,o);i.position.set(t.position.x,t.position.y,t.position.z),game.objects.mouseIndicators[s]=i,game.addToGameScene(game.objects.mouseIndicators[s])}}),socket.on("initialize",function(e){game.init(e)}),socket.on("reset",function(){location.reload()});
+
+var Game = function () {
+	this.utils = {
+		timestamp   : function () {
+			return window.performance && window.performance.now ? window.performance.now() : new Date().getTime();
+		},
+		fpsmeter    : new FPSMeter(document.getElementById('fpsmeter'), { decimals: 0, graph: true, theme: 'dark', left: '5px' }),
+		springs     : {
+			stiffness : 700,
+			damping   : 30,
+			maxLength : 7
+		}
+	};
+
+	var that        = this,
+		dt          = 0,
+		step        = 1/60,
+		last        = this.utils.timestamp(),
+		pressedKeys = [],
+		mouse       = new THREE.Vector2();
+
+	this.addToGameScene = function (addThis) {
+		scene.add(addThis);
+	};
+
+	this.removeFromGameScene = function (removeThis) {
+		scene.remove(removeThis);
+	};
+
+
+	this.createBridge = function (index1, index2) {
+		var material,
+			geometry,
+			line;
+
+		material = new THREE.LineBasicMaterial({
+			color : 0x99ffff
+		});
+		geometry = new THREE.Geometry();
+		geometry.vertices.push(that.objects.showMe[index1].mesh.position);
+		geometry.vertices.push(that.objects.showMe[index2].mesh.position);
+		line = new THREE.Line(geometry, material);
+
+		that.objects.lines.push({
+			material  : material,
+			geometry  : geometry,
+			mesh      : line,
+			box1      : index1,
+			box2      : index2
+		});
+		scene.add(line);
+	};
+
+
+	var scene,
+		camera,
+		renderer,
+		spotlight;
+
+	var raycaster,
+		mouseIndicatorEnabled,
+		distances;
+
+	var gameBoxGeometry,
+		gameBoxMaterial,
+		gameBox;
+
+	var gameFieldGeometry,
+		gameFieldMaterial,
+		gameField;
+
+	var gameFieldRearGeometry,
+		gameFieldRearMaterial,
+		gameFieldRear;
+
+	var obstacleGeometry,
+		obstacleMaterial,
+		obstacle;
+
+	var solver,
+		split;
+
+	var springs;
+
+	var groundMaterial,
+		groundShape,
+		groundBody;
+
+	var planeMaterial,
+		planeShape,
+		planeRear,
+		planeFront;
+
+	var boxShape,
+		boxCannonMaterial;
+
+	this.initGameField = function () {
+		scene = new THREE.Scene();
+		scene.fog = new THREE.Fog(0x000000, 0, 500);
+
+		camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
+		camera.translateX(0);
+		camera.translateY(20);
+		camera.translateZ(30);
+
+		renderer = new THREE.WebGLRenderer();
+		renderer.shadowMapType = THREE.PCFSoftShadowMap;
+		renderer.shadowMapEnabled = true;
+		renderer.shadowMapSoft = true;
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.setClearColor(scene.fog.color, 1);
+
+
+		/*gameBoxGeometry = new THREE.BoxGeometry(50, 50, 50);
+		gameBoxMaterial = new THREE.MeshLambertMaterial({ color : 0x669999 , side : THREE.BackSide });
+		gameBox         = new THREE.Mesh(gameBoxGeometry, gameBoxMaterial);
+		gameBox.receiveShadow = true;
+		scene.add(gameBox);
+*/
+
+		gameFieldGeometry = new THREE.PlaneBufferGeometry(70, 6, 50, 50);
+		gameFieldGeometry.applyMatrix(new THREE.Matrix4().makeRotationX(- Math.PI / 2));
+		gameFieldMaterial = new THREE.MeshLambertMaterial({ color : 0xaaaaaa });
+		gameField         = new THREE.Mesh(gameFieldGeometry, gameFieldMaterial);
+
+		gameField.position.z    = 3;
+		gameField.castShadow    = true;
+		gameField.receiveShadow = true;
+		scene.add(gameField);
+
+
+		gameFieldRearGeometry = new THREE.PlaneBufferGeometry(70, 40, 50, 50);
+		gameFieldRearMaterial = new THREE.MeshLambertMaterial({ color : 0xccccff });
+		gameFieldRear         = new THREE.Mesh(gameFieldRearGeometry, gameFieldRearMaterial);
+
+		gameFieldRear.position.y    = 20;
+		gameFieldRear.position.z    = -0.1;
+		gameFieldRear.castShadow    = true;
+		gameFieldRear.receiveShadow = true;
+		scene.add(gameFieldRear);
+
+		obstacleGeometry = new THREE.CylinderGeometry(3, 3, 0.8, 32);
+		obstacleMaterial = new THREE.MeshLambertMaterial({ color : 0xff2255 , transparent : true , opacity : 0.5 });
+		obstacle         = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+		obstacle.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+
+		obstacle.position.y = 24;
+		scene.add(obstacle);
+
+		var ambientLight;
+		ambientLight = new THREE.AmbientLight(0x222222);
+		scene.add(ambientLight);
+
+
+		spotlight = new THREE.SpotLight(0xffffff);
+		spotlight.position.set(-15, 60, 14);
+		spotlight.shadowMapWidth      = 1024;
+		spotlight.shadowMapHeight     = 1024;
+		spotlight.shadowCameraNear    = 10;
+		spotlight.shadowCameraFov     = 50;
+		spotlight.shadowDarkness      = 0.95;
+		spotlight.intensity           = 1.6;
+		spotlight.castShadow          = true;
+		scene.add(spotlight);
+
+		raycaster = new THREE.Raycaster();
+	};
+
+
+	this.initObjects = function (data) {
+		this.mySocketId = data.id;
+		this.color      = data.color;
+		this.objects    = {
+			mouseIndicators : {},
+			showMe          : [],
+			lines           : [],
+			springs         : [],
+			obstacles       : []
+		};
+
+
+		// this.boxGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 4);
+		// this.boxGeometry.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+		this.boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+
+		for (var i = 0; i < data.cubes.length; i++) {
+			var showMeMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(data.cubes[i].color) || 0xffffff }),
+/*				showMeGeometry = new THREE.BoxGeometry(1, 1, 1),*/
+				showMe         = new THREE.Mesh(this.boxGeometry, showMeMaterial);
+
+			this.objects.showMe.push({
+				mesh : showMe
+			});
+			data.cubes[i].position.z = 0;
+			this.objects.showMe[i].mesh.position.copy(data.cubes[i].position);
+			this.objects.showMe[i].mesh.quaternion.copy(data.cubes[i].q);
+
+			scene.add(this.objects.showMe[i].mesh);
+		}
+
+		for (var i = 0; i < data.lines.length; i++) {
+			this.createBridge(data.lines[i].index1, data.lines[i].index2);
+		}
+
+
+		var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(this.color) }),
+/*			mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1),*/
+			mouseIndicator         = new THREE.Mesh(this.boxGeometry, mouseIndicatorMaterial);
+
+		game.objects.mouseIndicators[this.mySocketId] = mouseIndicator;
+		scene.add(game.objects.mouseIndicators[this.mySocketId]);
+
+		mouseIndicatorEnabled = false;
+
+		distances = [];
+
+		this.nearestCubes = [];
+		for (var i = 0; i <= 2; i++) {
+			var material,
+				geometry,
+				line;
+
+			material = new THREE.LineBasicMaterial({ color : 0x66ffff });
+			geometry = new THREE.Geometry();
+			geometry.vertices.push(new THREE.Vector3(10, 0, 0));
+			geometry.vertices.push(new THREE.Vector3(-10, 0, 10));
+			line     = new THREE.Line(geometry, material);
+
+			this.nearestCubes.push({
+				distance : undefined,
+				index    : undefined,
+				line     : line
+			});
+
+			scene.add(this.nearestCubes[i].line);
+		}
+	};
+
+	this.handleKeyUp = function (event) {
+		pressedKeys[event.keyCode] = false;
+	};
+	this.handleKeyDown = function (event) {
+		pressedKeys[event.keyCode] = true;
+	};
+	this.handleKeys = function () {
+		if (pressedKeys[32]) {
+			socket.emit('reset');
+		}
+		/*if (pressedKeys[33]) {
+			// Page Up
+			z -= 0.05;
+		}
+		if (pressedKeys[34]) {
+			// Page Down
+			z += 0.05;
+		}
+		if (pressedKeys[37]) {
+			// Left cursor key
+			this.objects.cubes[0].position.x += -0.4;
+		}
+		if (pressedKeys[39]) {
+			// Right cursor key
+			this.objects.cubes[0].position.x -= -0.4;
+		}
+		if (pressedKeys[38]) {
+			// Up cursor key
+			this.objects.cubes[0].position.z += -0.4;
+		}
+		if (pressedKeys[40]) {
+			// Down cursor key
+			this.objects.cubes[0].position.z -= -0.4;
+		}*/
+	};
+
+	this.handleMouseMove = function (event) {
+		event.preventDefault();
+		mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+		mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+	};
+	this.handleMouseClick = function (event) {
+		if (mouseIndicatorEnabled && that.nearestCubes[0].distance <= that.utils.springs.maxLength && that.nearestCubes[1].distance <= that.utils.springs.maxLength) {
+			var data = {};
+
+			data.position = that.objects.mouseIndicators[that.mySocketId].position;
+			data.nearestCubes = [];
+
+			for (var i = 0; i < that.nearestCubes.length; i++) {
+				if (that.nearestCubes[i].index != undefined) {
+					data.nearestCubes.push({
+						distance : that.nearestCubes[i].distance,
+						index    : that.nearestCubes[i].index   
+					});
+				}
+			}
+			socket.emit('newCube', data);
+		}
+	};
+
+
+	this.update = function (step) {
+		this.handleKeys();
+
+		var objectsToCheck = [];
+
+		objectsToCheck.push(gameFieldRear);
+		objectsToCheck.push(obstacle);
+
+		raycaster.setFromCamera(mouse, camera);
+		var intersection = raycaster.intersectObjects(objectsToCheck);
+
+		if (intersection.length != 0 && intersection.length < 2) {
+			mouseIndicatorEnabled = true;
+			socket.emit('mouseIndicatorMove', {
+				x : intersection[0].point.x,
+				y : intersection[0].point.y,
+				z : intersection[0].point.z
+			});
+			this.objects.mouseIndicators[this.mySocketId].position.set(intersection[0].point.x, intersection[0].point.y, intersection[0].point.z);
+		} else {
+			mouseIndicatorEnabled = false;
+		}
+
+		if (mouseIndicatorEnabled) {
+			this.objects.mouseIndicators[this.mySocketId].visible = true;
+		} else {
+			this.objects.mouseIndicators[this.mySocketId].visible = false;
+		}
+
+/*  REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES  */
+		for (var i = 0; i < this.objects.lines.length; i++) {
+			/*this.objects.lines[i].mesh.geometry.vertices[0].set(this.objects.showMe[this.objects.lines[i].box1].mesh.position);
+			this.objects.lines[i].mesh.geometry.vertices[1].set(this.objects.showMe[this.objects.lines[i].box2].mesh.position);*/
+			this.objects.lines[i].mesh.geometry.verticesNeedUpdate = true;
+		}
+/* / REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES */
+
+		for (var i = 0; i < this.objects.showMe.length; i++) {
+/*  LOOKING FOR THE 2 NEAREST BOXES  */
+			var dx = this.objects.showMe[i].mesh.position.x - this.objects.mouseIndicators[this.mySocketId].position.x,
+				dy = this.objects.showMe[i].mesh.position.y - this.objects.mouseIndicators[this.mySocketId].position.y,
+				dz = this.objects.showMe[i].mesh.position.z - this.objects.mouseIndicators[this.mySocketId].position.z;
+
+			distances.push(Math.sqrt(dx * dx + dy * dy + dz * dz));
+			this.objects.showMe[i].mesh.material.transparent = false;
+		}
+
+		var distancesMin,
+			distancesMinIndex;
+
+		for (var i = 0; i <= 2; i++) {
+			distancesMin      = _.min(distances);
+			distancesMinIndex = _.indexOf(distances, distancesMin);
+
+			if (mouseIndicatorEnabled && distancesMin <= this.utils.springs.maxLength) {
+				var material,
+					geometry,
+					line;
+
+				material = new THREE.LineBasicMaterial({
+					color : 0x66ffff
+				});
+				geometry = new THREE.Geometry();
+				geometry.vertices.push(this.objects.showMe[distancesMinIndex].mesh.position);
+				geometry.vertices.push(game.objects.mouseIndicators[this.mySocketId].position);
+				line = new THREE.Line(geometry, material);
+
+				this.nearestCubes[i].line.visible = true;
+				this.nearestCubes[i].line.geometry.vertices[0].set(this.objects.showMe[distancesMinIndex].mesh.position.x, this.objects.showMe[distancesMinIndex].mesh.position.y, this.objects.showMe[distancesMinIndex].mesh.position.z);
+				this.nearestCubes[i].line.geometry.vertices[1].set(game.objects.mouseIndicators[this.mySocketId].position.x, game.objects.mouseIndicators[this.mySocketId].position.y, game.objects.mouseIndicators[this.mySocketId].position.z);
+				this.nearestCubes[i].line.geometry.verticesNeedUpdate = true;
+
+				this.nearestCubes[i].distance = distancesMin;
+				this.nearestCubes[i].index    = distancesMinIndex;
+			} else {
+				this.nearestCubes[i].line.visible = false;
+				this.nearestCubes[i].distance = undefined;
+				this.nearestCubes[i].index    = undefined;
+			}
+
+			distances[distancesMinIndex] = Infinity;
+		}
+
+		distances = [];
+/* / LOOKING FOR THE 2 NEAREST BOXES */
+	};
+
+	this.render = function () {
+		renderer.render(scene, camera);
+	};
+
+	this.frame = function () {
+		that.utils.fpsmeter.tickStart();
+		now  = that.utils.timestamp();
+		dt   = dt + Math.min(1, (now - last) / 1000);
+		while (dt > step) {
+			dt = dt - step;
+			that.update(step);
+		}
+		that.render(dt);
+		last = now;
+		requestAnimationFrame(that.frame);
+	};
+
+	this.init = function (data) {
+		this.initGameField();
+		this.initObjects(data);
+		raycaster = new THREE.Raycaster();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		document.body.appendChild(renderer.domElement);
+		document.onkeyup     = this.handleKeyUp;
+		document.onkeydown   = this.handleKeyDown;
+		document.onmousemove = this.handleMouseMove;
+		document.onclick     = this.handleMouseClick;
+		this.frame();
+	};
+
+
+	this.reset = function () {
+		for (var i = 3; i < this.objects.showMe.length; i++) {
+			this.removeFromGameScene(this.objects.showMe[i].mesh);
+		}
+		for (var i = 3; i < this.objects.lines.length; i++) {
+			this.removeFromGameScene(this.objects.lines[i].mesh);
+		}
+	};
+};
+
+var game = new Game();
+
+var socket = io(location.origin);
+
+socket.on('refresh', function (data) {
+	game.utils.fpsmeter.tick();
+	for (var i = 0; i < game.objects.showMe.length; i++) {
+		data.cubes[i].position.z = 0;
+		game.objects.showMe[i].mesh.position.copy(data.cubes[i].position);
+		game.objects.showMe[i].mesh.quaternion.copy(data.cubes[i].q);
+	}
+});
+
+socket.on('addCube', function (cube) {
+	var showMeMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(cube.color) || 0xffffff }),
+		/*showMeGeometry = new THREE.BoxGeometry(1, 1, 1),*/
+		showMe         = new THREE.Mesh(game.boxGeometry, showMeMaterial);
+
+	showMe.position.set(cube.position.x, cube.position.y, cube.position.z);
+	game.addToGameScene(showMe);
+
+	game.objects.showMe.push({
+		mesh : showMe
+	});
+	for (var i = 0; i < cube.nearestCubes.length; i++) {
+		game.createBridge(cube.nearestCubes[i].index, game.objects.showMe.length - 1);
+	}
+});
+
+socket.on('deleteMouseIndicator', function (socketId) {
+	game.removeFromGameScene(game.objects.mouseIndicators[socketId]);
+	delete game.objects.mouseIndicators[socketId];
+});
+
+socket.on('mouseMoved', function (otherPlayersMouseAndId) {
+	var otherMouse = otherPlayersMouseAndId.mouseIndicator,
+		id         = otherPlayersMouseAndId.id;
+
+	if (game.objects.mouseIndicators.hasOwnProperty(id)) {
+		game.objects.mouseIndicators[id].position.set(otherMouse.position.x, otherMouse.position.y, otherMouse.position.z);
+		game.objects.mouseIndicators[id].material.color = new THREE.Color(otherMouse.color);
+		game.objects.mouseIndicators[id].material.transparent = true;
+		game.objects.mouseIndicators[id].material.opacity = 0.5;
+	} else {
+		var mouseIndicatorMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(otherMouse.color) , opacity : 0.5 , transparent : true }),
+/*				mouseIndicatorGeometry = new THREE.BoxGeometry(1, 1, 1),*/
+			mouseIndicator         = new THREE.Mesh(game.boxGeometry, mouseIndicatorMaterial);
+
+		mouseIndicator.position.set(
+			otherMouse.position.x,
+			otherMouse.position.y,
+			otherMouse.position.z
+		);
+
+		game.objects.mouseIndicators[id] = mouseIndicator;
+
+		game.addToGameScene(game.objects.mouseIndicators[id]);
+	}
+});
+
+socket.on('initialize', function (data) {
+	game.init(data);
+});
+
+socket.on('reset', function () {
+	location.reload();
+});
