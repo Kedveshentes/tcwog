@@ -100,8 +100,8 @@ var Game = function () {
 
 		camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 		camera.translateX(0);
-		camera.translateY(20);
-		camera.translateZ(30);
+		camera.translateY(30);
+		camera.translateZ(35);
 
 		renderer = new THREE.WebGLRenderer({ antialias : true });
 		renderer.shadowMapType = THREE.PCFSoftShadowMap;
@@ -179,9 +179,9 @@ var Game = function () {
 		};
 
 
-		// this.boxGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 4);
-		// this.boxGeometry.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
-		this.boxGeometry = new THREE.BoxGeometry(1, 1, 1);
+		this.boxGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 8);
+		this.boxGeometry.applyMatrix(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+		// this.boxGeometry = new THREE.BoxGeometry(1, 1, 1);
 
 		for (var i = 0; i < data.cubes.length; i++) {
 			var showMeMaterial = new THREE.MeshLambertMaterial({ color : new THREE.Color(data.cubes[i].color) || 0xffffff }),
@@ -196,6 +196,7 @@ var Game = function () {
 			data.cubes[i].position.z = 0;
 			this.objects.showMe[i].mesh.position.copy(data.cubes[i].position);
 			this.objects.showMe[i].mesh.quaternion.copy(data.cubes[i].q);
+			this.objects.showMe[i].velocity = data.cubes[i].velocity;
 
 			scene.add(this.objects.showMe[i].mesh);
 		}
@@ -247,8 +248,17 @@ var Game = function () {
 		pressedKeys[event.keyCode] = true;
 	};
 	this.handleKeys = function () {
-		if (pressedKeys[32]) {
-			socket.emit('reset');
+		if (pressedKeys[13]) {
+			if (document.getElementById('name').value && document.getElementById('message').value) {
+				var message = {
+					name    : document.getElementById('name').value,
+					message : document.getElementById('message').value
+				};
+
+				socket.emit('sendMessage', message);
+				document.getElementById('message').value = '';
+			}
+
 		}
 		/*if (pressedKeys[33]) {
 			// Page Up
@@ -339,6 +349,14 @@ var Game = function () {
 /* / REFRESH LINES ACCORDING TO THEIR ENDPOINT BOXES */
 
 		for (var i = 0; i < this.objects.showMe.length; i++) {
+/*  ADD VELOCITY TO CURRENT POSITION  */
+			this.objects.showMe[i].mesh.position.x += this.objects.showMe[i].velocity.x / 100;
+			this.objects.showMe[i].mesh.position.y += this.objects.showMe[i].velocity.y / 100;
+			if (this.objects.showMe[i].mesh.position.y < 0.5) {
+				this.objects.showMe[i].mesh.position.y = 0.5;
+			}
+/* / ADD VELOCITY TO CURRENT POSITION */
+
 /*  LOOKING FOR THE 2 NEAREST BOXES  */
 			var dx = this.objects.showMe[i].mesh.position.x - this.objects.mouseIndicators[this.mySocketId].position.x,
 				dy = this.objects.showMe[i].mesh.position.y - this.objects.mouseIndicators[this.mySocketId].position.y,
@@ -437,6 +455,7 @@ socket.on('refresh', function (data) {
 	game.utils.fpsmeter.tick();
 	for (var i = 0; i < game.objects.showMe.length; i++) {
 		data.cubes[i].position.z = 0;
+		game.objects.showMe[i].velocity = data.cubes[i].velocity;
 		game.objects.showMe[i].mesh.position.copy(data.cubes[i].position);
 		game.objects.showMe[i].mesh.quaternion.copy(data.cubes[i].q);
 	}
@@ -453,9 +472,17 @@ socket.on('addCube', function (cube) {
 	showMe.position.set(cube.position.x, cube.position.y, cube.position.z);
 	game.addToGameScene(showMe);
 
+
 	game.objects.showMe.push({
 		mesh : showMe
 	});
+
+	game.objects.showMe[game.objects.showMe.length - 1].velocity = {
+		x : 0,
+		y : 0,
+		z : 0
+	};
+
 	for (var i = 0; i < cube.nearestCubes.length; i++) {
 		game.createBridge(cube.nearestCubes[i].index, game.objects.showMe.length - 1);
 	}
@@ -497,4 +524,17 @@ socket.on('initialize', function (data) {
 
 socket.on('reset', function () {
 	location.reload();
+});
+
+socket.on('receiveMessage', function (message) {
+	var messageDiv     = document.createElement('div'),
+		nameElement    = document.createElement('p'),
+		nameText       = document.createTextNode(message.name + ": " + message.message);
+
+	nameElement.appendChild(nameText);
+	messageDiv.appendChild(nameElement);
+	messageDiv.style["color"] = message.color;
+
+	document.getElementById('messages').insertBefore(messageDiv, document.getElementById('messages').firstChild);
+
 });

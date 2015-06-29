@@ -192,8 +192,8 @@ var Game = function () {
 		halfExtents       = new CANNON.Vec3(0.5, 0.5, 0.5);
 
 
-        // boxShape     = new CANNON.Cylinder(0.5, 0.5, 1, 4);
-		boxShape          = new CANNON.Box(halfExtents);
+        boxShape     = new CANNON.Cylinder(0.5, 0.5, 1, 4);
+		// boxShape          = new CANNON.Box(halfExtents);
 
 
 		boxCannonMaterial = new CANNON.Material();
@@ -246,9 +246,13 @@ function asd (socket) {
 				y : Math.round(game.objects.cubes[i].body.position.y * 1000) / 1000/*,
 				z : Math.round(game.objects.cubes[i].body.position.z * 1000) / 1000*/
 			},
-			q        : game.objects.cubes[i].body.quaternion
+			q        : game.objects.cubes[i].body.quaternion,
+			velocity : game.objects.cubes[i].body.velocity/*,
+			angVel   : game.objects.cubes[i].body.angularVelocity*/
 		});
 	}
+
+
 	socket.emit('refresh', send);
 }
 
@@ -272,7 +276,9 @@ io.on('connection', function (socket) {
 				z : Math.round(game.objects.cubes[i].body.position.z * 1000) / 1000*/
 			},
 			q        : game.objects.cubes[i].body.quaternion,
-			color    : game.objects.cubes[i].body.color
+			color    : game.objects.cubes[i].body.color,
+			velocity : game.objects.cubes[i].body.velocity/*,
+			angVel   : game.objects.cubes[i].body.angularVelocity*/
 		});
 		send.lines = game.objects.lines;
 	}
@@ -282,12 +288,17 @@ io.on('connection', function (socket) {
 
 	setInterval(function () {
 		asd(socket);
-	}, 33);
+	}, 100);
 
 	socket.on('newCube', function (newCube) {
 		game.addToGameWorld(newCube, socket.color);
 		newCube.color = socket.color;
 		io.sockets.emit('addCube', newCube);
+	});
+
+	socket.on('sendMessage', function (message) {
+		message.color = socket.color;
+		io.sockets.emit('receiveMessage', message);
 	});
 
 	socket.on('disconnect', function () {
