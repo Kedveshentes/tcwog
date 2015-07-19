@@ -153,7 +153,7 @@ var Game = function () {
 
 
 		spotlight = new THREE.SpotLight(0xffffff);
-		spotlight.position.set(-15, 60, 14);
+		spotlight.position.set(-15, 60, 25);
 		spotlight.shadowMapWidth      = 1024;
 		spotlight.shadowMapHeight     = 1024;
 		spotlight.shadowCameraNear    = 10;
